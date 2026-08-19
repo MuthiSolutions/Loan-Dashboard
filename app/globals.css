@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+:root {
+  /* Muthi brand tokens — sapphire field + azure accent (see muthi-brand-tokens memory) */
+  --sapphire: #16335f;
+  --sapphire-deep: #0f2447;
+  --sapphire-soft: #21406e;
+  --sapphire-line: rgba(120, 160, 230, 0.24);
+
+  --azure: #4e92e6;
+  --azure-soft: #7db2f0;
+  --azure-deep: #2c6cc0;
+
+  --cream: #eef1f7;
+  --cream-2: #e2e8f3;
+
+  --ink: #15244c;
+  --slate: #46506a;
+  --slate-soft: #7a839b;
+
+  --paper: #eaf1fb;
+  --mist: #a6b7d6;
+  --mist-soft: #7e8fb1;
+
+  --amber: #b8860b;
+  --amber-soft: #d4a534;
+  --danger: #b3402c;
+  --danger-soft: #d9c3bd;
+  --ok: #2f7a52;
+  --ok-soft: #c8ddce;
+
+  --background: var(--cream);
+  --foreground: var(--ink);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-poppins);
+  --font-display: var(--font-playfair);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+}
+
+.eyebrow {
+  font-family: var(--font-sans), sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--azure-deep);
+  font-weight: 600;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
