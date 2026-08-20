@@ -48,7 +48,13 @@ export function LoanCard({ loan }: { loan: Loan }) {
           label="Currently owed"
           value={formatFCFA(amountNow)}
           valueClassName={`tabular ${amountTone}`}
-          hint={weeks > 0 ? `incl. ${weeks} wk${weeks > 1 ? "s" : ""} × 1% late penalty` : undefined}
+          hint={
+            loan.manualAmountOverride !== undefined
+              ? "manually pinned figure"
+              : weeks > 0
+              ? `incl. ${weeks} wk${weeks > 1 ? "s" : ""} × 1% late penalty`
+              : undefined
+          }
         />
         <Stat
           label="Profit"

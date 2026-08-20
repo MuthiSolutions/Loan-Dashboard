@@ -27,10 +27,15 @@ export function weeksLate(loan: Loan, asOf: Date = new Date()): number {
   return Math.ceil(-days / 7);
 }
 
-/** Live amount currently owed, including any accrued late penalty. */
-export function computeAmountDue(loan: Loan, asOf: Date = new Date()): number {
+/** Formula amount: totalDue plus 1%/week-started penalty since the due date, per the contract's own terms. */
+export function formulaAmountDue(loan: Loan, asOf: Date = new Date()): number {
   const weeks = weeksLate(loan, asOf);
   return Math.round(loan.totalDue * (1 + loan.latePenaltyRatePerWeek * weeks));
+}
+
+/** Live amount currently owed. Uses a manually pinned figure when set (e.g. a figure agreed directly with the debtor), otherwise the formula amount. */
+export function computeAmountDue(loan: Loan, asOf: Date = new Date()): number {
+  return loan.manualAmountOverride ?? formulaAmountDue(loan, asOf);
 }
 
 export function getLoanState(loan: Loan, asOf: Date = new Date()): LoanState {

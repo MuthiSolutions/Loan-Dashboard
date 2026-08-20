@@ -22,6 +22,8 @@ export interface Loan {
   contractRef: string;
   /** Loan to a Muthi associate/insider rather than an outside client — flagged for governance visibility. */
   relatedParty?: boolean;
+  /** Pins "currently owed" to a manually confirmed figure instead of the date-driven formula (e.g. agreed directly with the debtor). Remove to resume automatic accrual. */
+  manualAmountOverride?: number;
   notes?: string[];
 }
 
@@ -72,9 +74,11 @@ export const loans: Loan[] = [
     dueOn: "2026-08-08",
     latePenaltyRatePerWeek: 0.01,
     contractRef: "Convention de Financement à Remboursement Participatif",
+    manualAmountOverride: 6_437_500,
     notes: [
       "Contract formula: Principal + 5% of gross event revenue, with a floor of 7,000,000 and a cap of 9,000,000 FCFA.",
       "Currently tracked at 6,250,000 base — this is BELOW the contract's own 7,000,000 floor. Worth confirming which figure actually governs; update totalDue above once settled.",
+      "Pinned to 6,437,500 on 20 Aug 2026 — pushed ahead of the week-2 formula figure (6,375,000). Remove manualAmountOverride once it's meant to resume auto-accruing from the formula.",
       "Confidential per Article 10 of the financing convention.",
     ],
   },

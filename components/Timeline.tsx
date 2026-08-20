@@ -1,5 +1,5 @@
 import type { Loan } from "@/data/loans";
-import { daysUntilDue, formatDate, formatFCFA, getLoanState } from "@/lib/loans";
+import { computeAmountDue, daysUntilDue, formatDate, formatFCFA, getLoanState } from "@/lib/loans";
 
 const DOT_COLOR = {
   overdue: "bg-[var(--danger)]",
@@ -35,7 +35,7 @@ export function Timeline({ loans }: { loans: Loan[] }) {
                 </div>
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                   <p className="text-sm text-[var(--slate-soft)]">{label}</p>
-                  <p className="text-sm font-semibold tabular text-[var(--ink)]">{formatFCFA(loan.totalDue)}</p>
+                  <p className="text-sm font-semibold tabular text-[var(--ink)]">{formatFCFA(computeAmountDue(loan))}</p>
                 </div>
               </div>
             </li>
