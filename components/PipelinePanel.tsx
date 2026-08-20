@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import type { PipelineEntry } from "@/data/loans";
+import type { DocumentLink, PipelineEntry } from "@/data/loans";
 import { formatFCFA } from "@/lib/loans";
+import { DocumentLinks } from "./DocumentLinks";
 
 export function PipelinePanel({ loans }: { loans: PipelineEntry[] }) {
   if (loans.length === 0) return null;
@@ -20,18 +21,25 @@ export function PipelinePanel({ loans }: { loans: PipelineEntry[] }) {
 function PipelineCard({
   title,
   status,
+  contact,
   children,
   notes,
+  documents,
 }: {
   title: string;
   status: string;
+  contact?: string;
   children: ReactNode;
   notes?: string[];
+  documents?: DocumentLink[];
 }) {
   return (
     <div className="rounded-xl bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="font-display text-base font-semibold text-[var(--ink)]">{title}</p>
+        <div>
+          <p className="font-display text-base font-semibold text-[var(--ink)]">{title}</p>
+          {contact && <p className="mt-0.5 text-sm text-[var(--slate-soft)]">{contact}</p>}
+        </div>
         <span className="rounded-full bg-[#f4e6c8] px-3 py-1 text-xs font-semibold text-[var(--amber)]">{status}</span>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-6">{children}</div>
@@ -45,6 +53,7 @@ function PipelineCard({
           ))}
         </ul>
       )}
+      <DocumentLinks documents={documents} />
     </div>
   );
 }
@@ -65,7 +74,7 @@ function TermEntry({ entry }: { entry: Extract<PipelineEntry, { kind: "term" }> 
   const impliedMonthly = Math.round(totalRepayment / entry.termMonths);
 
   return (
-    <PipelineCard title={entry.label} status={entry.status} notes={entry.notes}>
+    <PipelineCard title={entry.label} status={entry.status} contact={entry.contact} notes={entry.notes} documents={entry.documents}>
       <Stat label="Principal" value={formatFCFA(entry.principal)} />
       <Stat label="Fees" value={formatFCFA(feesTotal)} />
       <Stat label="Deferral" value={`${entry.deferralMonths} mo`} />
@@ -85,7 +94,7 @@ function PendingEntry({ entry }: { entry: Extract<PipelineEntry, { kind: "pendin
   const profitIfDisbursed = entry.totalDue - entry.principal;
 
   return (
-    <PipelineCard title={entry.borrower} status={entry.status} notes={entry.notes}>
+    <PipelineCard title={entry.borrower} status={entry.status} notes={entry.notes} documents={entry.documents}>
       {entry.requestedAmount && entry.requestedAmount !== entry.principal && (
         <Stat label="Requested" value={formatFCFA(entry.requestedAmount)} tone="text-[var(--slate-soft)]" />
       )}

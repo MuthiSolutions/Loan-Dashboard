@@ -9,6 +9,7 @@ import {
   getLoanState,
   weeksLate,
 } from "@/lib/loans";
+import { DocumentLinks } from "./DocumentLinks";
 import { StatusBadge } from "./StatusBadge";
 
 export function LoanCard({ loan }: { loan: Loan }) {
@@ -81,6 +82,8 @@ export function LoanCard({ loan }: { loan: Loan }) {
           ))}
         </ul>
       )}
+
+      <DocumentLinks documents={loan.documents} />
     </div>
   );
 }

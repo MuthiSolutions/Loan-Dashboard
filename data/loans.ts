@@ -7,6 +7,12 @@ export interface LoanFee {
   amount: number;
 }
 
+export interface DocumentLink {
+  label: string;
+  /** Filename under /public/documents/ — served through the same login gate as the rest of the dashboard. */
+  path: string;
+}
+
 export interface Loan {
   id: string;
   borrower: string;
@@ -24,6 +30,7 @@ export interface Loan {
   relatedParty?: boolean;
   /** Pins "currently owed" to a manually confirmed figure instead of the date-driven formula (e.g. agreed directly with the debtor). Remove to resume automatic accrual. */
   manualAmountOverride?: number;
+  documents?: DocumentLink[];
   notes?: string[];
 }
 
@@ -43,6 +50,11 @@ export const loans: Loan[] = [
     dueOn: "2026-09-18",
     latePenaltyRatePerWeek: 0.01,
     contractRef: "Convention de Prêt, 18 août 2026",
+    documents: [
+      { label: "Fiche de financement", path: "koizan-amoi-fiche.pdf" },
+      { label: "Convention de prêt", path: "koizan-amoi-convention.pdf" },
+      { label: "Reconnaissance de dette", path: "koizan-amoi-reconnaissance.pdf" },
+    ],
   },
   {
     id: "konan",
@@ -59,6 +71,11 @@ export const loans: Loan[] = [
     dueOn: "2026-09-18",
     latePenaltyRatePerWeek: 0.01,
     contractRef: "Convention de Prêt, 19 août 2026",
+    documents: [
+      { label: "Fiche de financement", path: "konan-fiche.pdf" },
+      { label: "Convention de prêt", path: "konan-convention.pdf" },
+      { label: "Reconnaissance de dette", path: "konan-reconnaissance.pdf" },
+    ],
     notes: [
       "Logged verbally as a ~100k loan — the signed convention and reconnaissance de dette both state 150,000 → 200,000. Using the signed figures.",
     ],
@@ -75,6 +92,10 @@ export const loans: Loan[] = [
     latePenaltyRatePerWeek: 0.01,
     contractRef: "Convention de Financement à Remboursement Participatif",
     manualAmountOverride: 6_437_500,
+    documents: [
+      { label: "Convention de financement", path: "praia-convention.pdf" },
+      { label: "Reconnaissance de dette", path: "praia-reconnaissance.pdf" },
+    ],
     notes: [
       "Contract formula: Principal + 5% of gross event revenue, with a floor of 7,000,000 and a cap of 9,000,000 FCFA.",
       "Currently tracked at 6,250,000 base — this is BELOW the contract's own 7,000,000 floor. Worth confirming which figure actually governs; update totalDue above once settled.",
@@ -98,6 +119,7 @@ export const loans: Loan[] = [
     latePenaltyRatePerWeek: 0.01,
     contractRef: "Fiche de Proposition de Financement, 19 août 2026",
     relatedParty: true,
+    documents: [{ label: "Fiche de financement", path: "ouattara-boni-fiche.pdf" }],
     notes: [
       "Related-party loan — extended to a Muthi associate, stated on terms identical to third-party clients (Article 5 of the loan convention).",
       "Based on the financing proposal sheet only — signed convention/reconnaissance de dette not yet on file.",
@@ -109,11 +131,13 @@ export interface TermPipelineLoan {
   kind: "term";
   id: string;
   label: string;
+  contact?: string;
   principal: number;
   termMonths: number;
   deferralMonths: number;
   fees: LoanFee[];
   status: string;
+  documents?: DocumentLink[];
   notes?: string[];
 }
 
@@ -128,6 +152,7 @@ export interface PendingPipelineLoan {
   fees: LoanFee[];
   totalDue: number;
   status: string;
+  documents?: DocumentLink[];
   notes?: string[];
 }
 
@@ -136,8 +161,9 @@ export type PipelineEntry = TermPipelineLoan | PendingPipelineLoan;
 export const pipeline: PipelineEntry[] = [
   {
     kind: "term",
-    id: "pipeline-3yr",
-    label: "Leocadei — 3-year term loan",
+    id: "pipeline-koffi",
+    label: "Léocadie Koffi — Kaelle Market & Services",
+    contact: "koffi_leo@yahoo.fr",
     principal: 5_000_000,
     termMonths: 36,
     deferralMonths: 2,
@@ -146,9 +172,12 @@ export const pipeline: PipelineEntry[] = [
       { label: "Management fee", amount: 500_000 },
     ],
     status: "Counter-proposal received — awaiting sign-off",
+    documents: [{ label: "Fiche de financement (original terms, 18 août)", path: "kaelle-koffi-fiche.pdf" }],
     notes: [
-      "Updated 20 Aug 2026: Leocadei countered with a 15% financing fee on the 5,000,000 principal (750,000) plus a flat 500,000 management fee — total 6,250,000 if signed on these terms. Supersedes the earlier 200,000/month estimate.",
-      "Monthly payment amount not yet confirmed with Leocadei — the figure below spreads principal + fees evenly over the 36-month term for reference only.",
+      "Originally approved 18 Aug 2026 at ~36% flat over 3 years: 200,000/month over 34 payments (after a 2-month deferral), 1,800,000 total financing cost, 6,800,000 total repayment. The normal 200,000 gestion fee was waived on that version.",
+      "Koffi has since countered at 15% on the 5,000,000 principal (750,000) plus a flat 500,000 management fee — 1,250,000 total, 6,250,000 repayment if signed on these terms. Figures below reflect this counter-proposal, not the original approval.",
+      "Monthly payment amount not yet confirmed on the new terms — the figure below spreads principal + fees evenly over the 36-month term for reference only.",
+      "Still missing per the fiche: employer attestation/payslips, CNI, signed reconnaissance de dette, and her choice of monthly collection method (bank transfer / invoice / Mobile Money).",
     ],
   },
   {
@@ -164,6 +193,7 @@ export const pipeline: PipelineEntry[] = [
     ],
     totalDue: 192_500,
     status: "Awaiting CNI before disbursement — no date set yet",
+    documents: [{ label: "Fiche de financement", path: "koizan-marie-andrea-fiche.pdf" }],
     notes: [
       "Client requested 300,000; only 150,000 approved at this stage pending a complete dossier. The remaining 150,000 may be revisited once regularized.",
     ],
