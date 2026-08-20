@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS loans (
   contract_ref TEXT,
   related_party BOOLEAN NOT NULL DEFAULT FALSE,
   manual_amount_override BIGINT,
+  final_deadline DATE,
   requested_amount BIGINT,
   term_months INT,
   deferral_months INT,

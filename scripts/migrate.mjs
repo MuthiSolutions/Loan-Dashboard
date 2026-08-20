@@ -68,12 +68,12 @@ const loans = [
     dueOn: "2026-08-08",
     latePenaltyRatePerWeek: 0.01,
     contractRef: "Convention de Prêt, 2 juillet 2026",
-    manualAmountOverride: 6_437_500,
+    finalDeadline: "2026-08-23",
     documents: [
       { label: "Convention de prêt", path: "praia-convention.docx" },
       { label: "Reconnaissance de dette", path: "praia-reconnaissance.docx" },
     ],
-    notes: ["Confidential per Article 8 of the loan convention."],
+    notes: ["Debtor granted a final extension to 23 Aug 2026, confirmed by email — no further extensions past this date."],
   },
   {
     id: "ouattara-boni",
@@ -93,9 +93,7 @@ const loans = [
     contractRef: "Fiche de Proposition de Financement, 19 août 2026",
     relatedParty: true,
     documents: [{ label: "Fiche de financement", path: "ouattara-boni-fiche.pdf" }],
-    notes: [
-      "Related-party loan — extended to a Muthi associate, on terms stated as identical to third-party clients (Article 5 of the loan convention).",
-    ],
+    notes: ["Related-party loan — extended to a Muthi associate, on the same terms as third-party clients."],
   },
   {
     id: "pipeline-koffi",
@@ -115,7 +113,7 @@ const loans = [
       "Originally approved 18 Aug 2026 at ~36% flat over 3 years: 200,000/month over 34 payments (after a 2-month deferral), 1,800,000 total financing cost, 6,800,000 total repayment. The normal 200,000 gestion fee was waived on that version.",
       "Koffi has since countered at 15% on the 5,000,000 principal (750,000) plus a flat 500,000 management fee — 1,250,000 total, 6,250,000 repayment if signed on these terms. Figures below reflect this counter-proposal, not the original approval.",
       "Monthly payment amount not yet confirmed on the new terms — the figure below spreads principal + fees evenly over the 36-month term for reference only.",
-      "Still missing per the fiche: employer attestation/payslips, CNI, signed reconnaissance de dette, and her choice of monthly collection method (bank transfer / invoice / Mobile Money).",
+      "Still missing before disbursement: employer attestation/payslips, CNI, signed reconnaissance de dette, and her choice of monthly collection method (bank transfer / invoice / Mobile Money).",
     ],
   },
   {
@@ -159,10 +157,10 @@ async function main() {
       `INSERT INTO loans (
         id, kind, borrower, purpose, contact, principal, fees, total_due,
         disbursed_on, due_on, late_penalty_rate_per_week, contract_ref,
-        related_party, manual_amount_override, requested_amount, term_months,
+        related_party, manual_amount_override, final_deadline, requested_amount, term_months,
         deferral_months, status, documents, notes, sort_order
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22
       )
       ON CONFLICT (id) DO NOTHING`,
       [
@@ -180,6 +178,7 @@ async function main() {
         loan.contractRef ?? null,
         loan.relatedParty ?? false,
         loan.manualAmountOverride ?? null,
+        loan.finalDeadline ?? null,
         loan.requestedAmount ?? null,
         loan.termMonths ?? null,
         loan.deferralMonths ?? null,

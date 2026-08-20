@@ -1,7 +1,12 @@
 import { Logo } from "./Logo";
 import { LogoutButton } from "./LogoutButton";
 
-export function Header({ asOf }: { asOf: Date }) {
+const NAV_ITEMS = [
+  { href: "/", label: "Dashboard" },
+  { href: "/deadlines", label: "Deadlines" },
+];
+
+export function Header({ asOf, current = "/" }: { asOf: Date; current?: string }) {
   const updated = asOf.toLocaleDateString("en-GB", {
     weekday: "long",
     day: "2-digit",
@@ -19,6 +24,21 @@ export function Header({ asOf }: { asOf: Date }) {
             <h1 className="font-display text-2xl font-semibold text-[var(--paper)]">Loan Portfolio</h1>
           </div>
         </div>
+
+        <nav className="flex items-center gap-1">
+          {NAV_ITEMS.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                current === item.href ? "bg-white/15 text-[var(--paper)]" : "text-[var(--mist)] hover:bg-white/10"
+              }`}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+
         <div className="flex items-center gap-4">
           <div className="text-right text-xs text-[var(--mist)]">
             <p className="font-semibold text-[var(--mist-soft)]">Internal — confidential</p>

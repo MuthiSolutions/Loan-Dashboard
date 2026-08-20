@@ -16,6 +16,7 @@ interface LoanRow {
   contract_ref: string | null;
   related_party: boolean;
   manual_amount_override: string | null;
+  final_deadline: string | null;
   requested_amount: string | null;
   term_months: number | null;
   deferral_months: number | null;
@@ -43,6 +44,7 @@ function rowToLoan(row: LoanRow): Loan {
     contractRef: row.contract_ref ?? "",
     relatedParty: row.related_party || undefined,
     manualAmountOverride: n(row.manual_amount_override),
+    finalDeadline: row.final_deadline ?? undefined,
     documents: row.documents.length > 0 ? row.documents : undefined,
     notes: row.notes.length > 0 ? row.notes : undefined,
   };

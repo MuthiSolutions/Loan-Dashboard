@@ -63,6 +63,13 @@ export function LoanCard({ loan }: { loan: Loan }) {
         liveLabel="Profit"
       />
 
+      {loan.finalDeadline && (
+        <div className="mt-4 flex items-center gap-2 rounded-lg bg-[var(--danger-soft)] px-3 py-2 text-sm font-medium text-[var(--danger)]">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+          Final deadline {formatDate(loan.finalDeadline)} — no further extensions
+        </div>
+      )}
+
       <div className="mt-5 flex flex-wrap gap-x-8 gap-y-1 border-t border-[var(--cream-2)] pt-4 text-sm text-[var(--slate-soft)]">
         {loan.disbursedOn && <span>Disbursed {formatDate(loan.disbursedOn)}</span>}
         <span>Due {formatDate(loan.dueOn)}</span>

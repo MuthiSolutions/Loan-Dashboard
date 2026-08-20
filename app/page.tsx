@@ -5,7 +5,6 @@ import { Header } from "@/components/Header";
 import { LoanCard } from "@/components/LoanCard";
 import { PipelinePanel } from "@/components/PipelinePanel";
 import { SummaryCard } from "@/components/SummaryCard";
-import { Timeline } from "@/components/Timeline";
 
 // Penalties accrue by the day and the loan book is DB-backed, so this page
 // must be computed per-request, not cached at build time.
@@ -32,7 +31,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[var(--cream)]">
-      <Header asOf={asOf} />
+      <Header asOf={asOf} current="/" />
 
       <main className="mx-auto max-w-6xl space-y-8 px-6 py-8">
         <CashPanel cash={cashPosition} />
@@ -77,12 +76,9 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <Timeline loans={loans} />
-          <div>
-            <p className="eyebrow mb-3 text-[11px]">Pipeline</p>
-            <PipelinePanel loans={pipeline} />
-          </div>
+        <section>
+          <p className="eyebrow mb-3 text-[11px]">Pipeline</p>
+          <PipelinePanel loans={pipeline} />
         </section>
 
         <footer className="border-t border-[var(--cream-2)] pt-6 pb-4 text-xs text-[var(--slate-soft)]">

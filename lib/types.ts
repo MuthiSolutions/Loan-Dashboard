@@ -26,6 +26,8 @@ export interface Loan {
   relatedParty?: boolean;
   /** Pins "currently owed" to a manually confirmed figure instead of the date-driven formula (e.g. agreed directly with the debtor). Remove to resume automatic accrual. */
   manualAmountOverride?: number;
+  /** A hard cutoff communicated to the debtor beyond the original dueOn — e.g. a final grace extension. Penalty still accrues from dueOn; this just marks the last-chance date. */
+  finalDeadline?: string; // ISO date
   documents?: DocumentLink[];
   notes?: string[];
 }
