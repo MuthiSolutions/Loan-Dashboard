@@ -77,7 +77,6 @@ const loans = [
       { label: "Convention de prêt", path: "praia-convention.docx" },
       { label: "Reconnaissance de dette", path: "praia-reconnaissance.docx" },
     ],
-    notes: ["Debtor granted a final extension to 23 Aug 2026, confirmed by email — no further extensions past this date."],
   },
   {
     id: "ouattara-boni",
@@ -151,9 +150,7 @@ const cashPosition = {
   inBank: 100_000,
   heldByFounder: 300_000,
   heldByFounderNote: "Temporarily held by the founder, owed back to the company",
-  notes: [
-    "Reduced from 250,000 after the 150,000 disbursed to Emmanuel Ouattara-Boni on 19 Aug 2026 — update this figure by hand whenever a new disbursement goes out or a repayment comes in.",
-  ],
+  notes: [],
 };
 
 async function main() {
