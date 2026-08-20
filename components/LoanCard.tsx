@@ -43,7 +43,7 @@ export function LoanCard({ loan }: { loan: Loan }) {
         <Stat
           label="Currently owed"
           value={formatFCFA(amountNow)}
-          valueClassName={`tabular ${amountTone}`}
+          valueClassName={amountTone}
           hint={
             loan.manualAmountOverride !== undefined
               ? "manually pinned figure"
