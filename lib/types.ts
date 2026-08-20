@@ -9,7 +9,16 @@ export interface DocumentLink {
   path: string;
 }
 
-export interface Loan {
+/** Underwriting-relevant facts about the person, independent of any one loan's terms. Optional — most of this is still missing for most borrowers. */
+export interface BorrowerProfile {
+  profession?: string;
+  employer?: string;
+  employmentType?: "CDI" | "CDD" | "Self-employed" | "Informal" | "Other";
+  monthlyIncome?: number;
+  tenureYears?: number;
+}
+
+export interface Loan extends BorrowerProfile {
   id: string;
   borrower: string;
   purpose: string;
@@ -32,7 +41,7 @@ export interface Loan {
   notes?: string[];
 }
 
-export interface TermPipelineLoan {
+export interface TermPipelineLoan extends BorrowerProfile {
   kind: "term";
   id: string;
   label: string;
@@ -46,7 +55,7 @@ export interface TermPipelineLoan {
   notes?: string[];
 }
 
-export interface PendingPipelineLoan {
+export interface PendingPipelineLoan extends BorrowerProfile {
   kind: "pending";
   id: string;
   borrower: string;

@@ -4,6 +4,7 @@ import { LogoutButton } from "./LogoutButton";
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard" },
   { href: "/deadlines", label: "Deadlines" },
+  { href: "/borrowers", label: "Borrowers" },
 ];
 
 export function Header({ asOf, current = "/" }: { asOf: Date; current?: string }) {

@@ -1,5 +1,5 @@
 import { pool } from "./db";
-import type { CashPosition, DocumentLink, Loan, LoanFee, PipelineEntry } from "./types";
+import type { BorrowerProfile, CashPosition, DocumentLink, Loan, LoanFee, PipelineEntry } from "./types";
 
 interface LoanRow {
   id: string;
@@ -23,10 +23,25 @@ interface LoanRow {
   status: string | null;
   documents: DocumentLink[];
   notes: string[];
+  profession: string | null;
+  employer: string | null;
+  employment_type: BorrowerProfile["employmentType"] | null;
+  monthly_income: string | null;
+  tenure_years: string | null;
 }
 
 function n(value: string | null): number | undefined {
   return value === null ? undefined : Number(value);
+}
+
+function borrowerProfile(row: LoanRow): BorrowerProfile {
+  return {
+    profession: row.profession ?? undefined,
+    employer: row.employer ?? undefined,
+    employmentType: row.employment_type ?? undefined,
+    monthlyIncome: n(row.monthly_income),
+    tenureYears: n(row.tenure_years),
+  };
 }
 
 function rowToLoan(row: LoanRow): Loan {
@@ -47,6 +62,7 @@ function rowToLoan(row: LoanRow): Loan {
     finalDeadline: row.final_deadline ?? undefined,
     documents: row.documents.length > 0 ? row.documents : undefined,
     notes: row.notes.length > 0 ? row.notes : undefined,
+    ...borrowerProfile(row),
   };
 }
 
@@ -58,6 +74,7 @@ function rowToPipelineEntry(row: LoanRow): PipelineEntry {
     status: row.status ?? "",
     documents: row.documents.length > 0 ? row.documents : undefined,
     notes: row.notes.length > 0 ? row.notes : undefined,
+    ...borrowerProfile(row),
   };
 
   if (row.kind === "pipeline_term") {

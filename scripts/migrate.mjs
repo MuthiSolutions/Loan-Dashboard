@@ -17,6 +17,9 @@ const loans = [
     borrower: "Amoi David-Allan Koizan",
     purpose: "Emergency medical financing (hospitalization)",
     contact: "+225 05 85 91 61 94",
+    employer: "LOXEA Côte d'Ivoire",
+    employmentType: "CDI",
+    monthlyIncome: 1_004_784,
     principal: 300_000,
     fees: [
       { label: "Financing fee (25%)", amount: 75_000 },
@@ -39,6 +42,7 @@ const loans = [
     borrower: "Claude Arnaud Niky Konan",
     purpose: "Urgent payment financing",
     contact: "+225 07 69 25 25 25",
+    profession: "Logisticien",
     principal: 150_000,
     fees: [
       { label: "Financing fee (25%)", amount: 37_500 },
@@ -81,6 +85,10 @@ const loans = [
     borrower: "Emmanuel Paul-Allan Ouattara-Boni",
     purpose: "Personal financing",
     contact: "+225 07 12 38 14 80",
+    profession: "Associate Product Manager, Internal Tools & Automation",
+    employer: "Hub2 Solutions (Mauritius) Ltd",
+    employmentType: "CDI",
+    tenureYears: 0.6,
     principal: 150_000,
     fees: [
       { label: "Financing fee (25%)", amount: 37_500 },
@@ -100,6 +108,9 @@ const loans = [
     kind: "pipeline_term",
     borrower: "Léocadie Koffi — Kaelle Market & Services",
     contact: "koffi_leo@yahoo.fr",
+    profession: "Coordinatrice des opérations (organisation internationale)",
+    employmentType: "CDI",
+    tenureYears: 16,
     principal: 5_000_000,
     termMonths: 36,
     deferralMonths: 2,
@@ -158,9 +169,10 @@ async function main() {
         id, kind, borrower, purpose, contact, principal, fees, total_due,
         disbursed_on, due_on, late_penalty_rate_per_week, contract_ref,
         related_party, manual_amount_override, final_deadline, requested_amount, term_months,
-        deferral_months, status, documents, notes, sort_order
+        deferral_months, status, documents, notes, sort_order,
+        profession, employer, employment_type, monthly_income, tenure_years
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27
       )
       ON CONFLICT (id) DO NOTHING`,
       [
@@ -186,6 +198,11 @@ async function main() {
         JSON.stringify(loan.documents ?? []),
         JSON.stringify(loan.notes ?? []),
         order,
+        loan.profession ?? null,
+        loan.employer ?? null,
+        loan.employmentType ?? null,
+        loan.monthlyIncome ?? null,
+        loan.tenureYears ?? null,
       ]
     );
   }
