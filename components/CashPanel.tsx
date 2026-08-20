@@ -23,6 +23,17 @@ export function CashPanel({ cash }: { cash: CashPosition }) {
           <p className="mt-1 text-xs text-[var(--mist-soft)]">{cash.heldByFounderNote}</p>
         </div>
       </div>
+
+      {cash.notes && cash.notes.length > 0 && (
+        <ul className="mt-5 space-y-1.5 border-t border-white/10 pt-4">
+          {cash.notes.map((note) => (
+            <li key={note} className="flex gap-2 text-xs text-[var(--mist-soft)]">
+              <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-[var(--azure-soft)]" />
+              {note}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

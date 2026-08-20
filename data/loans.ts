@@ -174,10 +174,14 @@ export interface CashPosition {
   inBank: number;
   heldByFounder: number;
   heldByFounderNote: string;
+  notes?: string[];
 }
 
 export const cashPosition: CashPosition = {
-  inBank: 250_000,
+  inBank: 100_000,
   heldByFounder: 300_000,
   heldByFounderNote: "Temporarily held by the founder, owed back to the company",
+  notes: [
+    "Reduced from 250,000 after the 150,000 disbursed to Emmanuel Ouattara-Boni on 19 Aug 2026 — update this figure by hand whenever a new disbursement goes out or a repayment comes in.",
+  ],
 };
