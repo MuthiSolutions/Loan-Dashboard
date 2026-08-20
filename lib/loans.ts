@@ -40,16 +40,28 @@ export function getLoanState(loan: Loan, asOf: Date = new Date()): LoanState {
   return "on-track";
 }
 
+/** What was contracted to be earned on this deal — total due at maturity minus principal disbursed, before any late penalty. */
+export function contractedProfit(loan: Loan): number {
+  return loan.totalDue - loan.principal;
+}
+
+/** What's actually owed to be earned right now — live amount due (incl. accrued late penalty) minus principal. */
+export function computeProfit(loan: Loan, asOf: Date = new Date()): number {
+  return computeAmountDue(loan, asOf) - loan.principal;
+}
+
 export function portfolioTotals(asOf: Date = new Date()) {
   const totalPrincipal = loans.reduce((sum, l) => sum + l.principal, 0);
   const totalContracted = loans.reduce((sum, l) => sum + l.totalDue, 0);
   const totalCurrentlyOwed = loans.reduce((sum, l) => sum + computeAmountDue(l, asOf), 0);
+  const totalProfit = totalCurrentlyOwed - totalPrincipal;
   const overdueCount = loans.filter((l) => getLoanState(l, asOf) === "overdue").length;
   const dueSoonCount = loans.filter((l) => getLoanState(l, asOf) === "due-soon").length;
   return {
     totalPrincipal,
     totalContracted,
     totalCurrentlyOwed,
+    totalProfit,
     overdueCount,
     dueSoonCount,
     activeCount: loans.length,

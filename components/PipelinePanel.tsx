@@ -10,6 +10,7 @@ export function PipelinePanel({ loans }: { loans: PipelineLoan[] }) {
       <div className="mt-4 space-y-4">
         {loans.map((loan) => {
           const totalRepayment = loan.monthlyPayment * loan.termMonths;
+          const profitIfSigned = totalRepayment - loan.principal;
           return (
             <div key={loan.id} className="rounded-xl bg-white p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
@@ -18,7 +19,7 @@ export function PipelinePanel({ loans }: { loans: PipelineLoan[] }) {
                   {loan.status}
                 </span>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
                 <div>
                   <p className="text-[11px] tracking-wide text-[var(--slate-soft)] uppercase">Principal</p>
                   <p className="mt-0.5 font-semibold tabular text-[var(--ink)]">{formatFCFA(loan.principal)}</p>
@@ -36,6 +37,10 @@ export function PipelinePanel({ loans }: { loans: PipelineLoan[] }) {
                 <div>
                   <p className="text-[11px] tracking-wide text-[var(--slate-soft)] uppercase">If signed, total</p>
                   <p className="mt-0.5 font-semibold tabular text-[var(--azure-deep)]">{formatFCFA(totalRepayment)}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] tracking-wide text-[var(--slate-soft)] uppercase">Profit if signed</p>
+                  <p className="mt-0.5 font-semibold tabular text-[var(--ok)]">{formatFCFA(profitIfSigned)}</p>
                 </div>
               </div>
             </div>

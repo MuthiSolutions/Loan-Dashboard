@@ -30,7 +30,7 @@ export default function DashboardPage() {
       <main className="mx-auto max-w-6xl space-y-8 px-6 py-8">
         <CashPanel cash={cashPosition} />
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <SummaryCard label="Deployable cash" value={formatFCFA(totalDeployable)} sub="Bank + pending founder return" tone="azure" />
           <SummaryCard label="Principal deployed" value={formatFCFA(totals.totalPrincipal)} sub={`${totals.activeCount} active loans`} />
           <SummaryCard
@@ -38,6 +38,12 @@ export default function DashboardPage() {
             value={formatFCFA(totals.totalCurrentlyOwed)}
             sub="Live, incl. accrued late penalties"
             tone={totals.overdueCount > 0 ? "danger" : "default"}
+          />
+          <SummaryCard
+            label="Profit — active loans"
+            value={formatFCFA(totals.totalProfit)}
+            sub={`Contracted ${formatFCFA(totals.totalContracted - totals.totalPrincipal)} + accrued penalties`}
+            tone="ok"
           />
           <SummaryCard
             label="Needs attention"
