@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { DocumentLink, PipelineEntry } from "@/lib/types";
 import { formatFCFA } from "@/lib/loans";
 import { DocumentLinks } from "./DocumentLinks";
+import { ProfitBreakdown } from "./ProfitBreakdown";
 
 export function PipelinePanel({ loans }: { loans: PipelineEntry[] }) {
   if (loans.length === 0) return null;
@@ -23,6 +24,7 @@ function PipelineCard({
   status,
   contact,
   children,
+  profitBreakdown,
   notes,
   documents,
 }: {
@@ -30,6 +32,7 @@ function PipelineCard({
   status: string;
   contact?: string;
   children: ReactNode;
+  profitBreakdown?: ReactNode;
   notes?: string[];
   documents?: DocumentLink[];
 }) {
@@ -42,7 +45,8 @@ function PipelineCard({
         </div>
         <span className="rounded-full bg-[#f4e6c8] px-3 py-1 text-xs font-semibold text-[var(--amber)]">{status}</span>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-6">{children}</div>
+      <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">{children}</div>
+      {profitBreakdown}
       {notes && notes.length > 0 && (
         <ul className="mt-4 space-y-1.5 border-t border-[var(--cream-2)] pt-3">
           {notes.map((note) => (
@@ -70,38 +74,57 @@ function Stat({ label, value, tone = "text-[var(--ink)]" }: { label: string; val
 function TermEntry({ entry }: { entry: Extract<PipelineEntry, { kind: "term" }> }) {
   const feesTotal = entry.fees.reduce((sum, f) => sum + f.amount, 0);
   const totalRepayment = entry.principal + feesTotal;
-  const profitIfSigned = feesTotal;
   const impliedMonthly = Math.round(totalRepayment / entry.termMonths);
 
   return (
-    <PipelineCard title={entry.label} status={entry.status} contact={entry.contact} notes={entry.notes} documents={entry.documents}>
+    <PipelineCard
+      title={entry.label}
+      status={entry.status}
+      contact={entry.contact}
+      notes={entry.notes}
+      documents={entry.documents}
+      profitBreakdown={
+        <ProfitBreakdown
+          principal={entry.principal}
+          fees={entry.fees}
+          fallbackFeeLabel="Contract premium (no itemized fees)"
+          contractedTotal={totalRepayment}
+          liveTotal={totalRepayment}
+          liveLabel="Profit if signed"
+        />
+      }
+    >
       <Stat label="Principal" value={formatFCFA(entry.principal)} />
-      <Stat label="Fees" value={formatFCFA(feesTotal)} />
       <Stat label="Deferral" value={`${entry.deferralMonths} mo`} />
-      <Stat
-        label="If signed, total"
-        value={formatFCFA(totalRepayment)}
-        tone="text-[var(--azure-deep)]"
-      />
-      <Stat label="Profit if signed" value={formatFCFA(profitIfSigned)} tone="text-[var(--ok)]" />
+      <Stat label="If signed, total" value={formatFCFA(totalRepayment)} tone="text-[var(--azure-deep)]" />
       <Stat label="≈ Monthly (implied)" value={`${formatFCFA(impliedMonthly)} × ${entry.termMonths}`} tone="text-[var(--slate-soft)]" />
     </PipelineCard>
   );
 }
 
 function PendingEntry({ entry }: { entry: Extract<PipelineEntry, { kind: "pending" }> }) {
-  const feesTotal = entry.fees.reduce((sum, f) => sum + f.amount, 0);
-  const profitIfDisbursed = entry.totalDue - entry.principal;
-
   return (
-    <PipelineCard title={entry.borrower} status={entry.status} notes={entry.notes} documents={entry.documents}>
+    <PipelineCard
+      title={entry.borrower}
+      status={entry.status}
+      notes={entry.notes}
+      documents={entry.documents}
+      profitBreakdown={
+        <ProfitBreakdown
+          principal={entry.principal}
+          fees={entry.fees}
+          fallbackFeeLabel="Contract premium (no itemized fees)"
+          contractedTotal={entry.totalDue}
+          liveTotal={entry.totalDue}
+          liveLabel="Profit if disbursed"
+        />
+      }
+    >
       {entry.requestedAmount && entry.requestedAmount !== entry.principal && (
         <Stat label="Requested" value={formatFCFA(entry.requestedAmount)} tone="text-[var(--slate-soft)]" />
       )}
       <Stat label="Approved principal" value={formatFCFA(entry.principal)} />
-      <Stat label="Fees" value={feesTotal > 0 ? formatFCFA(feesTotal) : "—"} />
       <Stat label="If disbursed, total" value={formatFCFA(entry.totalDue)} tone="text-[var(--azure-deep)]" />
-      <Stat label="Profit if disbursed" value={formatFCFA(profitIfDisbursed)} tone="text-[var(--ok)]" />
     </PipelineCard>
   );
 }
