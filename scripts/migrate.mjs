@@ -1,42 +1,19 @@
-// Source of truth for the loan book. Update this file when a new contract
-// comes in, a loan is repaid, or terms change — the dashboard recomputes
-// everything (status, accrued penalties, totals) from these facts.
+// One-off: creates the schema (if missing) and seeds it with the current loan book.
+// Run with: node scripts/migrate.mjs   (DATABASE_URL must be set in the environment)
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import pg from "pg";
 
-export interface LoanFee {
-  label: string;
-  amount: number;
-}
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const schema = readFileSync(path.join(__dirname, "..", "lib", "schema.sql"), "utf8");
 
-export interface DocumentLink {
-  label: string;
-  /** Filename under /public/documents/ — served through the same login gate as the rest of the dashboard. */
-  path: string;
-}
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
-export interface Loan {
-  id: string;
-  borrower: string;
-  purpose: string;
-  contact?: string;
-  principal: number;
-  fees: LoanFee[];
-  /** Total contractually due at maturity, before any late penalty. */
-  totalDue: number;
-  disbursedOn?: string; // ISO date
-  dueOn: string; // ISO date
-  latePenaltyRatePerWeek: number; // e.g. 0.01 = 1% per week started, on totalDue
-  contractRef: string;
-  /** Loan to a Muthi associate/insider rather than an outside client — flagged for governance visibility. */
-  relatedParty?: boolean;
-  /** Pins "currently owed" to a manually confirmed figure instead of the date-driven formula (e.g. agreed directly with the debtor). Remove to resume automatic accrual. */
-  manualAmountOverride?: number;
-  documents?: DocumentLink[];
-  notes?: string[];
-}
-
-export const loans: Loan[] = [
+const loans = [
   {
     id: "koizan",
+    kind: "active",
     borrower: "Amoi David-Allan Koizan",
     purpose: "Emergency medical financing (hospitalization)",
     contact: "+225 05 85 91 61 94",
@@ -58,6 +35,7 @@ export const loans: Loan[] = [
   },
   {
     id: "konan",
+    kind: "active",
     borrower: "Claude Arnaud Niky Konan",
     purpose: "Urgent payment financing",
     contact: "+225 07 69 25 25 25",
@@ -82,6 +60,7 @@ export const loans: Loan[] = [
   },
   {
     id: "praia",
+    kind: "active",
     borrower: "Yann Samuel Oloufoumi-Séry — projet PRAÏA",
     purpose: "Event revenue-participation financing",
     contact: "yoloufoumisery@gmail.com",
@@ -105,6 +84,7 @@ export const loans: Loan[] = [
   },
   {
     id: "ouattara-boni",
+    kind: "active",
     borrower: "Emmanuel Paul-Allan Ouattara-Boni",
     purpose: "Personal financing",
     contact: "+225 07 12 38 14 80",
@@ -125,44 +105,10 @@ export const loans: Loan[] = [
       "Based on the financing proposal sheet only — signed convention/reconnaissance de dette not yet on file.",
     ],
   },
-];
-
-export interface TermPipelineLoan {
-  kind: "term";
-  id: string;
-  label: string;
-  contact?: string;
-  principal: number;
-  termMonths: number;
-  deferralMonths: number;
-  fees: LoanFee[];
-  status: string;
-  documents?: DocumentLink[];
-  notes?: string[];
-}
-
-export interface PendingPipelineLoan {
-  kind: "pending";
-  id: string;
-  borrower: string;
-  purpose: string;
-  /** What the client originally asked for, if different from what's currently approved. */
-  requestedAmount?: number;
-  principal: number;
-  fees: LoanFee[];
-  totalDue: number;
-  status: string;
-  documents?: DocumentLink[];
-  notes?: string[];
-}
-
-export type PipelineEntry = TermPipelineLoan | PendingPipelineLoan;
-
-export const pipeline: PipelineEntry[] = [
   {
-    kind: "term",
     id: "pipeline-koffi",
-    label: "Léocadie Koffi — Kaelle Market & Services",
+    kind: "pipeline_term",
+    borrower: "Léocadie Koffi — Kaelle Market & Services",
     contact: "koffi_leo@yahoo.fr",
     principal: 5_000_000,
     termMonths: 36,
@@ -181,8 +127,8 @@ export const pipeline: PipelineEntry[] = [
     ],
   },
   {
-    kind: "pending",
     id: "koizan-marie-andrea",
+    kind: "pipeline_pending",
     borrower: "Marie Andréa Koizan",
     purpose: "Personal financing",
     requestedAmount: 300_000,
@@ -200,14 +146,7 @@ export const pipeline: PipelineEntry[] = [
   },
 ];
 
-export interface CashPosition {
-  inBank: number;
-  heldByFounder: number;
-  heldByFounderNote: string;
-  notes?: string[];
-}
-
-export const cashPosition: CashPosition = {
+const cashPosition = {
   inBank: 100_000,
   heldByFounder: 300_000,
   heldByFounderNote: "Temporarily held by the founder, owed back to the company",
@@ -215,3 +154,64 @@ export const cashPosition: CashPosition = {
     "Reduced from 250,000 after the 150,000 disbursed to Emmanuel Ouattara-Boni on 19 Aug 2026 — update this figure by hand whenever a new disbursement goes out or a repayment comes in.",
   ],
 };
+
+async function main() {
+  console.log("Applying schema...");
+  await pool.query(schema);
+
+  console.log("Seeding loans...");
+  let order = 0;
+  for (const loan of loans) {
+    order += 1;
+    await pool.query(
+      `INSERT INTO loans (
+        id, kind, borrower, purpose, contact, principal, fees, total_due,
+        disbursed_on, due_on, late_penalty_rate_per_week, contract_ref,
+        related_party, manual_amount_override, requested_amount, term_months,
+        deferral_months, status, documents, notes, sort_order
+      ) VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21
+      )
+      ON CONFLICT (id) DO NOTHING`,
+      [
+        loan.id,
+        loan.kind,
+        loan.borrower,
+        loan.purpose ?? null,
+        loan.contact ?? null,
+        loan.principal,
+        JSON.stringify(loan.fees ?? []),
+        loan.totalDue ?? null,
+        loan.disbursedOn ?? null,
+        loan.dueOn ?? null,
+        loan.latePenaltyRatePerWeek ?? 0.01,
+        loan.contractRef ?? null,
+        loan.relatedParty ?? false,
+        loan.manualAmountOverride ?? null,
+        loan.requestedAmount ?? null,
+        loan.termMonths ?? null,
+        loan.deferralMonths ?? null,
+        loan.status ?? null,
+        JSON.stringify(loan.documents ?? []),
+        JSON.stringify(loan.notes ?? []),
+        order,
+      ]
+    );
+  }
+
+  console.log("Seeding cash position...");
+  await pool.query(
+    `INSERT INTO cash_position (id, in_bank, held_by_founder, held_by_founder_note, notes)
+     VALUES (1, $1, $2, $3, $4)
+     ON CONFLICT (id) DO NOTHING`,
+    [cashPosition.inBank, cashPosition.heldByFounder, cashPosition.heldByFounderNote, JSON.stringify(cashPosition.notes)]
+  );
+
+  console.log("Done.");
+  await pool.end();
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

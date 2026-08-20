@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { DocumentLink, PipelineEntry } from "@/data/loans";
+import type { DocumentLink, PipelineEntry } from "@/lib/types";
 import { formatFCFA } from "@/lib/loans";
 import { DocumentLinks } from "./DocumentLinks";
 

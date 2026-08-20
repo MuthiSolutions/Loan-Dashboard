@@ -1,4 +1,4 @@
-import { loans, type Loan } from "@/data/loans";
+import type { Loan } from "./types";
 
 export type LoanState = "overdue" | "due-soon" | "on-track";
 
@@ -55,7 +55,7 @@ export function computeProfit(loan: Loan, asOf: Date = new Date()): number {
   return computeAmountDue(loan, asOf) - loan.principal;
 }
 
-export function portfolioTotals(asOf: Date = new Date()) {
+export function portfolioTotals(loans: Loan[], asOf: Date = new Date()) {
   const totalPrincipal = loans.reduce((sum, l) => sum + l.principal, 0);
   const totalContracted = loans.reduce((sum, l) => sum + l.totalDue, 0);
   const totalCurrentlyOwed = loans.reduce((sum, l) => sum + computeAmountDue(l, asOf), 0);
@@ -73,7 +73,7 @@ export function portfolioTotals(asOf: Date = new Date()) {
   };
 }
 
-export function loansSortedByUrgency(asOf: Date = new Date()): Loan[] {
+export function loansSortedByUrgency(loans: Loan[], asOf: Date = new Date()): Loan[] {
   return [...loans].sort((a, b) => daysUntilDue(a, asOf) - daysUntilDue(b, asOf));
 }
 

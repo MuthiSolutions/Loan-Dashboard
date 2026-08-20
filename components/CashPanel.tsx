@@ -1,4 +1,4 @@
-import type { CashPosition } from "@/data/loans";
+import type { CashPosition } from "@/lib/types";
 import { formatFCFA } from "@/lib/loans";
 
 export function CashPanel({ cash }: { cash: CashPosition }) {

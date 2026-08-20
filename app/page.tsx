@@ -1,4 +1,4 @@
-import { cashPosition, pipeline } from "@/data/loans";
+import { getActiveLoans, getCashPosition, getPipelineEntries } from "@/lib/repo";
 import { formatFCFA, loansSortedByUrgency, portfolioTotals } from "@/lib/loans";
 import { CashPanel } from "@/components/CashPanel";
 import { Header } from "@/components/Header";
@@ -7,13 +7,20 @@ import { PipelinePanel } from "@/components/PipelinePanel";
 import { SummaryCard } from "@/components/SummaryCard";
 import { Timeline } from "@/components/Timeline";
 
-// Penalties accrue by the day, so this page must be computed per-request, not cached at build time.
+// Penalties accrue by the day and the loan book is DB-backed, so this page
+// must be computed per-request, not cached at build time.
 export const dynamic = "force-dynamic";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
   const asOf = new Date();
-  const loans = loansSortedByUrgency(asOf);
-  const totals = portfolioTotals(asOf);
+  const [activeLoans, pipeline, cashPosition] = await Promise.all([
+    getActiveLoans(),
+    getPipelineEntries(),
+    getCashPosition(),
+  ]);
+
+  const loans = loansSortedByUrgency(activeLoans, asOf);
+  const totals = portfolioTotals(activeLoans, asOf);
   const totalDeployable = cashPosition.inBank + cashPosition.heldByFounder;
 
   const attentionLabel =
@@ -54,7 +61,15 @@ export default function DashboardPage() {
         </section>
 
         <section>
-          <p className="eyebrow mb-3 text-[11px]">Loan book</p>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="eyebrow text-[11px]">Loan book</p>
+            <a
+              href="/loans/new"
+              className="rounded-full bg-[var(--azure-deep)] px-4 py-1.5 text-xs font-semibold text-[var(--paper)] transition hover:opacity-90"
+            >
+              + Add a deal
+            </a>
+          </div>
           <div className="space-y-4">
             {loans.map((loan) => (
               <LoanCard key={loan.id} loan={loan} />

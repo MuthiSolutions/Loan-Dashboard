@@ -1,4 +1,4 @@
-import type { DocumentLink } from "@/data/loans";
+import type { DocumentLink } from "@/lib/types";
 
 export function DocumentLinks({ documents }: { documents?: DocumentLink[] }) {
   if (!documents || documents.length === 0) return null;

@@ -1,4 +1,4 @@
-import type { Loan } from "@/data/loans";
+import type { Loan } from "@/lib/types";
 import {
   computeAmountDue,
   computeProfit,
