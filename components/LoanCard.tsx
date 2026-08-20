@@ -27,7 +27,14 @@ export function LoanCard({ loan }: { loan: Loan }) {
     <div className="rounded-2xl border border-[var(--sapphire-line)] bg-white p-6 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="font-display text-lg font-semibold text-[var(--ink)]">{loan.borrower}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-display text-lg font-semibold text-[var(--ink)]">{loan.borrower}</p>
+            {loan.relatedParty && (
+              <span className="rounded-full bg-[#f4e6c8] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--amber)]">
+                Related party
+              </span>
+            )}
+          </div>
           <p className="mt-0.5 text-sm text-[var(--slate)]">{loan.purpose}</p>
         </div>
         <StatusBadge state={state} days={days} />

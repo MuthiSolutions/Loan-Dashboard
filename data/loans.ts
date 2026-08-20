@@ -20,6 +20,8 @@ export interface Loan {
   dueOn: string; // ISO date
   latePenaltyRatePerWeek: number; // e.g. 0.01 = 1% per week started, on totalDue
   contractRef: string;
+  /** Loan to a Muthi associate/insider rather than an outside client — flagged for governance visibility. */
+  relatedParty?: boolean;
   notes?: string[];
 }
 
@@ -76,27 +78,91 @@ export const loans: Loan[] = [
       "Confidential per Article 10 of the financing convention.",
     ],
   },
+  {
+    id: "ouattara-boni",
+    borrower: "Emmanuel Paul-Allan Ouattara-Boni",
+    purpose: "Personal financing",
+    contact: "+225 07 12 38 14 80",
+    principal: 150_000,
+    fees: [
+      { label: "Financing fee (25%)", amount: 37_500 },
+      { label: "Management fee", amount: 12_500 },
+    ],
+    totalDue: 200_000,
+    disbursedOn: "2026-08-19",
+    dueOn: "2026-09-19",
+    latePenaltyRatePerWeek: 0.01,
+    contractRef: "Fiche de Proposition de Financement, 19 août 2026",
+    relatedParty: true,
+    notes: [
+      "Related-party loan — extended to a Muthi associate, stated on terms identical to third-party clients (Article 5 of the loan convention).",
+      "Based on the financing proposal sheet only — signed convention/reconnaissance de dette not yet on file.",
+    ],
+  },
 ];
 
-export interface PipelineLoan {
+export interface TermPipelineLoan {
+  kind: "term";
   id: string;
   label: string;
   principal: number;
   termMonths: number;
   deferralMonths: number;
-  monthlyPayment: number;
+  fees: LoanFee[];
   status: string;
+  notes?: string[];
 }
 
-export const pipeline: PipelineLoan[] = [
+export interface PendingPipelineLoan {
+  kind: "pending";
+  id: string;
+  borrower: string;
+  purpose: string;
+  /** What the client originally asked for, if different from what's currently approved. */
+  requestedAmount?: number;
+  principal: number;
+  fees: LoanFee[];
+  totalDue: number;
+  status: string;
+  notes?: string[];
+}
+
+export type PipelineEntry = TermPipelineLoan | PendingPipelineLoan;
+
+export const pipeline: PipelineEntry[] = [
   {
+    kind: "term",
     id: "pipeline-3yr",
-    label: "3-year term loan — under negotiation",
+    label: "Leocadei — 3-year term loan",
     principal: 5_000_000,
     termMonths: 36,
     deferralMonths: 2,
-    monthlyPayment: 200_000,
-    status: "Under negotiation — not yet signed or disbursed",
+    fees: [
+      { label: "Financing fee (15%)", amount: 750_000 },
+      { label: "Management fee", amount: 500_000 },
+    ],
+    status: "Counter-proposal received — awaiting sign-off",
+    notes: [
+      "Updated 20 Aug 2026: Leocadei countered with a 15% financing fee on the 5,000,000 principal (750,000) plus a flat 500,000 management fee — total 6,250,000 if signed on these terms. Supersedes the earlier 200,000/month estimate.",
+      "Monthly payment amount not yet confirmed with Leocadei — the figure below spreads principal + fees evenly over the 36-month term for reference only.",
+    ],
+  },
+  {
+    kind: "pending",
+    id: "koizan-marie-andrea",
+    borrower: "Marie Andréa Koizan",
+    purpose: "Personal financing",
+    requestedAmount: 300_000,
+    principal: 150_000,
+    fees: [
+      { label: "Financing fee (20%)", amount: 30_000 },
+      { label: "Management fee", amount: 12_500 },
+    ],
+    totalDue: 192_500,
+    status: "Awaiting CNI before disbursement — no date set yet",
+    notes: [
+      "Client requested 300,000; only 150,000 approved at this stage pending a complete dossier. The remaining 150,000 may be revisited once regularized.",
+    ],
   },
 ];
 
