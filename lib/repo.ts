@@ -1,5 +1,5 @@
 import { pool } from "./db";
-import type { BorrowerProfile, CashPosition, DocumentLink, Loan, LoanFee, PipelineEntry } from "./types";
+import type { BorrowerProfile, CashAccount, CashMovement, CashPosition, DocumentLink, Loan, LoanFee, PipelineEntry } from "./types";
 
 interface LoanRow {
   id: string;
@@ -126,20 +126,55 @@ export async function getPipelineEntries(): Promise<PipelineEntry[]> {
   return rows.map(rowToPipelineEntry);
 }
 
-export async function getCashPosition(): Promise<CashPosition> {
-  const { rows } = await pool.query<{
-    in_bank: string;
-    held_by_founder: string;
-    held_by_founder_note: string;
-    notes: string[];
-  }>("SELECT * FROM cash_position WHERE id = 1");
-  const row = rows[0];
+interface CashMovementRow {
+  id: number;
+  account: CashAccount;
+  amount: string;
+  description: string;
+  loan_id: string | null;
+  occurred_on: string;
+}
+
+function rowToMovement(row: CashMovementRow): CashMovement {
   return {
-    inBank: Number(row.in_bank),
-    heldByFounder: Number(row.held_by_founder),
-    heldByFounderNote: row.held_by_founder_note,
-    notes: row.notes.length > 0 ? row.notes : undefined,
+    id: row.id,
+    account: row.account,
+    amount: Number(row.amount),
+    description: row.description,
+    loanId: row.loan_id ?? undefined,
+    occurredOn: row.occurred_on,
   };
+}
+
+/** Balances are a live sum over cash_movements, not a hand-maintained figure — see lib/schema.sql. */
+export async function getCashPosition(): Promise<CashPosition> {
+  const [totals, recent] = await Promise.all([
+    pool.query<{ account: CashAccount; total: string }>("SELECT account, SUM(amount) AS total FROM cash_movements GROUP BY account"),
+    pool.query<CashMovementRow>("SELECT * FROM cash_movements ORDER BY occurred_on DESC, id DESC LIMIT 10"),
+  ]);
+
+  const byAccount = Object.fromEntries(totals.rows.map((r) => [r.account, Number(r.total)]));
+
+  return {
+    inBank: byAccount.bank ?? 0,
+    heldByFounder: byAccount.founder ?? 0,
+    movements: recent.rows.map(rowToMovement),
+  };
+}
+
+export interface NewCashMovementInput {
+  account: CashAccount;
+  amount: number;
+  description: string;
+  loanId?: string;
+  occurredOn: string;
+}
+
+export async function recordCashMovement(input: NewCashMovementInput): Promise<void> {
+  await pool.query(
+    "INSERT INTO cash_movements (account, amount, description, loan_id, occurred_on) VALUES ($1, $2, $3, $4, $5)",
+    [input.account, input.amount, input.description, input.loanId ?? null, input.occurredOn]
+  );
 }
 
 export interface NewLoanInput {

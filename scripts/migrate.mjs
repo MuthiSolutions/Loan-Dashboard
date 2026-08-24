@@ -150,12 +150,12 @@ const loans = [
   },
 ];
 
-const cashPosition = {
-  inBank: 100_000,
-  heldByFounder: 300_000,
-  heldByFounderNote: "Temporarily held by the founder, owed back to the company",
-  notes: [],
-};
+// Opening balances only — real movements from here on live in cash_movements,
+// computed as SUM(amount) per account, never hand-set. See lib/schema.sql.
+const openingCashMovements = [
+  ["bank", 100_000, "Opening balance", null, "2026-08-19"],
+  ["founder", 300_000, "Opening balance, pending return to the company", null, "2026-08-19"],
+];
 
 async function main() {
   console.log("Applying schema...");
@@ -208,13 +208,18 @@ async function main() {
     );
   }
 
-  console.log("Seeding cash position...");
-  await pool.query(
-    `INSERT INTO cash_position (id, in_bank, held_by_founder, held_by_founder_note, notes)
-     VALUES (1, $1, $2, $3, $4)
-     ON CONFLICT (id) DO NOTHING`,
-    [cashPosition.inBank, cashPosition.heldByFounder, cashPosition.heldByFounderNote, JSON.stringify(cashPosition.notes)]
-  );
+  console.log("Seeding opening cash movements...");
+  const { rows: existing } = await pool.query("SELECT COUNT(*)::int AS count FROM cash_movements");
+  if (existing[0].count === 0) {
+    for (const [account, amount, description, loanId, occurredOn] of openingCashMovements) {
+      await pool.query(
+        "INSERT INTO cash_movements (account, amount, description, loan_id, occurred_on) VALUES ($1,$2,$3,$4,$5)",
+        [account, amount, description, loanId, occurredOn]
+      );
+    }
+  } else {
+    console.log("cash_movements already has rows — skipping opening balances.");
+  }
 
   console.log("Done.");
   await pool.end();

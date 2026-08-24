@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS loans (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Superseded by cash_movements below — balances are now a computed sum, not a
+-- hand-maintained number. Left in place (unused) rather than dropped.
 CREATE TABLE IF NOT EXISTS cash_position (
   id INT PRIMARY KEY DEFAULT 1,
   in_bank BIGINT NOT NULL,
@@ -35,4 +37,16 @@ CREATE TABLE IF NOT EXISTS cash_position (
   held_by_founder_note TEXT NOT NULL,
   notes JSONB NOT NULL DEFAULT '[]',
   CONSTRAINT single_row CHECK (id = 1)
+);
+
+-- Every cash inflow/outflow, per account. "In bank" and "held by founder" are
+-- SUM(amount) over this table, filtered by account — never edited directly.
+CREATE TABLE IF NOT EXISTS cash_movements (
+  id SERIAL PRIMARY KEY,
+  account TEXT NOT NULL CHECK (account IN ('bank', 'founder')),
+  amount BIGINT NOT NULL, -- signed: positive = inflow, negative = outflow
+  description TEXT NOT NULL,
+  loan_id TEXT REFERENCES loans(id) ON DELETE SET NULL,
+  occurred_on DATE NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

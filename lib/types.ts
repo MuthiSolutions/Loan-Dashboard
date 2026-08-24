@@ -78,9 +78,21 @@ export interface PendingPipelineLoan extends BorrowerProfile {
 
 export type PipelineEntry = TermPipelineLoan | PendingPipelineLoan;
 
+export type CashAccount = "bank" | "founder";
+
+export interface CashMovement {
+  id: number;
+  account: CashAccount;
+  /** Signed: positive = inflow, negative = outflow. */
+  amount: number;
+  description: string;
+  loanId?: string;
+  occurredOn: string; // ISO date
+}
+
 export interface CashPosition {
+  /** Computed as SUM(amount) over cash_movements per account — never hand-set. */
   inBank: number;
   heldByFounder: number;
-  heldByFounderNote: string;
-  notes?: string[];
+  movements: CashMovement[];
 }
