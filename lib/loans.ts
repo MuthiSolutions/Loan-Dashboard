@@ -33,9 +33,14 @@ export function formulaAmountDue(loan: Loan, asOf: Date = new Date()): number {
   return Math.round(loan.totalDue * (1 + loan.latePenaltyRatePerWeek * weeks));
 }
 
-/** Live amount currently owed. Uses a manually pinned figure when set (e.g. a figure agreed directly with the debtor), otherwise the formula amount. */
-export function computeAmountDue(loan: Loan, asOf: Date = new Date()): number {
+/** Full value of the deal as of this date — manual pin or formula — before netting out any payments already received. This is what profit is measured against, so a partial payment doesn't make the deal look smaller than it is. */
+export function grossAmountDue(loan: Loan, asOf: Date = new Date()): number {
   return loan.manualAmountOverride ?? formulaAmountDue(loan, asOf);
+}
+
+/** Outstanding balance still owed: gross amount due minus payments received so far. This is the collections figure — what to actually chase. */
+export function computeAmountDue(loan: Loan, asOf: Date = new Date()): number {
+  return Math.max(0, grossAmountDue(loan, asOf) - (loan.amountPaid ?? 0));
 }
 
 export function getLoanState(loan: Loan, asOf: Date = new Date()): LoanState {
@@ -50,21 +55,23 @@ export function contractedProfit(loan: Loan): number {
   return loan.totalDue - loan.principal;
 }
 
-/** What's actually owed to be earned right now — live amount due (incl. accrued late penalty) minus principal. */
+/** What's actually being earned on this deal — full value (incl. accrued late penalty) minus principal. Unaffected by partial payments: profit doesn't shrink just because it hasn't all been collected yet. */
 export function computeProfit(loan: Loan, asOf: Date = new Date()): number {
-  return computeAmountDue(loan, asOf) - loan.principal;
+  return grossAmountDue(loan, asOf) - loan.principal;
 }
 
 export function portfolioTotals(loans: Loan[], asOf: Date = new Date()) {
   const totalPrincipal = loans.reduce((sum, l) => sum + l.principal, 0);
   const totalContracted = loans.reduce((sum, l) => sum + l.totalDue, 0);
+  const totalGrossOwed = loans.reduce((sum, l) => sum + grossAmountDue(l, asOf), 0);
   const totalCurrentlyOwed = loans.reduce((sum, l) => sum + computeAmountDue(l, asOf), 0);
-  const totalProfit = totalCurrentlyOwed - totalPrincipal;
+  const totalProfit = totalGrossOwed - totalPrincipal;
   const overdueCount = loans.filter((l) => getLoanState(l, asOf) === "overdue").length;
   const dueSoonCount = loans.filter((l) => getLoanState(l, asOf) === "due-soon").length;
   return {
     totalPrincipal,
     totalContracted,
+    totalGrossOwed,
     totalCurrentlyOwed,
     totalProfit,
     overdueCount,

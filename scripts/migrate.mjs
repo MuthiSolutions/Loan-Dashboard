@@ -1,5 +1,9 @@
-// One-off: creates the schema (if missing) and seeds it with the current loan book.
+// One-off: creates the schema (if missing) and seeds it with the initial loan book.
 // Run with: node scripts/migrate.mjs   (DATABASE_URL must be set in the environment)
+// Uses ON CONFLICT DO NOTHING, so re-running is safe but won't apply updates to
+// existing rows — Postgres is the live source of truth from here on. This file
+// reflects the state as of first seeding, not every subsequent manual edit
+// (payments, waivers, repaid status, etc.) — don't treat it as a live mirror.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";

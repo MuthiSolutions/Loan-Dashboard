@@ -37,6 +37,12 @@ export interface Loan extends BorrowerProfile {
   manualAmountOverride?: number;
   /** A hard cutoff communicated to the debtor beyond the original dueOn — e.g. a final grace extension. Penalty still accrues from dueOn; this just marks the last-chance date. */
   finalDeadline?: string; // ISO date
+  /** Cumulative payments received against this loan so far. Nets against the gross amount due to produce the outstanding balance. */
+  amountPaid?: number;
+  /** Date of the most recent payment received, for display alongside amountPaid. */
+  lastPaymentOn?: string; // ISO date
+  /** Set once the loan is fully settled — excludes it from the active book and portfolio totals, while keeping the record for history. */
+  repaidOn?: string; // ISO date
   documents?: DocumentLink[];
   notes?: string[];
 }

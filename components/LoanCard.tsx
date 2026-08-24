@@ -5,6 +5,7 @@ import {
   formatDate,
   formatFCFA,
   getLoanState,
+  grossAmountDue,
   weeksLate,
 } from "@/lib/loans";
 import { DocumentLinks } from "./DocumentLinks";
@@ -14,6 +15,7 @@ import { StatusBadge } from "./StatusBadge";
 export function LoanCard({ loan }: { loan: Loan }) {
   const state = getLoanState(loan);
   const days = daysUntilDue(loan);
+  const grossNow = grossAmountDue(loan);
   const amountNow = computeAmountDue(loan);
   const weeks = weeksLate(loan);
 
@@ -59,9 +61,17 @@ export function LoanCard({ loan }: { loan: Loan }) {
         fees={loan.fees}
         fallbackFeeLabel="Contract premium (no itemized fees)"
         contractedTotal={loan.totalDue}
-        liveTotal={amountNow}
+        liveTotal={grossNow}
         liveLabel="Profit"
       />
+
+      {loan.amountPaid !== undefined && loan.amountPaid > 0 && (
+        <div className="mt-4 flex items-center gap-2 rounded-lg bg-[var(--ok-soft)] px-3 py-2 text-sm font-medium text-[var(--ok)]">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+          {formatFCFA(loan.amountPaid)} received{loan.lastPaymentOn ? ` ${formatDate(loan.lastPaymentOn)}` : ""} —{" "}
+          {formatFCFA(amountNow)} remaining
+        </div>
+      )}
 
       {loan.finalDeadline && (
         <div className="mt-4 flex items-center gap-2 rounded-lg bg-[var(--danger-soft)] px-3 py-2 text-sm font-medium text-[var(--danger)]">

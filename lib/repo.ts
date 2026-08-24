@@ -17,6 +17,9 @@ interface LoanRow {
   related_party: boolean;
   manual_amount_override: string | null;
   final_deadline: string | null;
+  amount_paid: string | null;
+  last_payment_on: string | null;
+  repaid_on: string | null;
   requested_amount: string | null;
   term_months: number | null;
   deferral_months: number | null;
@@ -60,6 +63,9 @@ function rowToLoan(row: LoanRow): Loan {
     relatedParty: row.related_party || undefined,
     manualAmountOverride: n(row.manual_amount_override),
     finalDeadline: row.final_deadline ?? undefined,
+    amountPaid: n(row.amount_paid),
+    lastPaymentOn: row.last_payment_on ?? undefined,
+    repaidOn: row.repaid_on ?? undefined,
     documents: row.documents.length > 0 ? row.documents : undefined,
     notes: row.notes.length > 0 ? row.notes : undefined,
     ...borrowerProfile(row),
@@ -100,7 +106,15 @@ function rowToPipelineEntry(row: LoanRow): PipelineEntry {
 
 export async function getActiveLoans(): Promise<Loan[]> {
   const { rows } = await pool.query<LoanRow>(
-    "SELECT * FROM loans WHERE kind = 'active' ORDER BY sort_order, created_at"
+    "SELECT * FROM loans WHERE kind = 'active' AND repaid_on IS NULL ORDER BY sort_order, created_at"
+  );
+  return rows.map(rowToLoan);
+}
+
+/** Loans that have been fully settled — kept for history, excluded from the active book/portfolio totals. */
+export async function getRepaidLoans(): Promise<Loan[]> {
+  const { rows } = await pool.query<LoanRow>(
+    "SELECT * FROM loans WHERE kind = 'active' AND repaid_on IS NOT NULL ORDER BY repaid_on DESC"
   );
   return rows.map(rowToLoan);
 }
