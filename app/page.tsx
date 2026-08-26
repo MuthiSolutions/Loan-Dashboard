@@ -40,18 +40,27 @@ export default async function DashboardPage() {
         <CashPanel cash={cashPosition} />
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          <SummaryCard label="Deployable cash" value={formatFCFA(totalDeployable)} sub="Bank + pending founder return" tone="azure" />
-          <SummaryCard label="Principal deployed" value={formatFCFA(totals.totalPrincipal)} sub={`${totals.activeCount} active loans`} />
           <SummaryCard
-            label="Currently owed to Muthi"
+            label="Cash on hand"
+            value={formatFCFA(totalDeployable)}
+            sub={`${formatFCFA(cashPosition.inBank)} bank + ${formatFCFA(cashPosition.heldByFounder)} with founder`}
+            tone="azure"
+          />
+          <SummaryCard
+            label="Principal at risk"
+            value={formatFCFA(totals.totalPrincipal)}
+            sub={`${totals.activeCount} active loans, not yet repaid`}
+          />
+          <SummaryCard
+            label="Total outstanding"
             value={formatFCFA(totals.totalCurrentlyOwed)}
-            sub="Live, incl. accrued late penalties"
+            sub="Principal + fees + penalties, net of payments received"
             tone={totals.overdueCount > 0 ? "danger" : "default"}
           />
           <SummaryCard
-            label="Profit — active loans"
+            label="Expected profit"
             value={formatFCFA(totals.totalProfit)}
-            sub={`Contracted ${formatFCFA(totals.totalContracted - totals.totalPrincipal)} + accrued penalties`}
+            sub="Already included in the outstanding total above"
             tone="ok"
           />
           <SummaryCard
