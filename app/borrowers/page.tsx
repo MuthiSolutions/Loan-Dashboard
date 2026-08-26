@@ -27,6 +27,7 @@ export default async function BorrowersPage() {
       amountLabel: "Currently owed",
       amount: amountDue,
       score: computeCreditScore(input),
+      repaymentHistory: loan.repaymentHistory,
     };
   });
 

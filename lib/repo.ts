@@ -1,5 +1,15 @@
 import { pool } from "./db";
-import type { BorrowerProfile, CashAccount, CashMovement, CashPosition, DocumentLink, Loan, LoanFee, PipelineEntry } from "./types";
+import type {
+  BorrowerProfile,
+  CashAccount,
+  CashMovement,
+  CashPosition,
+  DocumentLink,
+  Loan,
+  LoanFee,
+  PipelineEntry,
+  RepaymentEvent,
+} from "./types";
 
 interface LoanRow {
   id: string;
@@ -26,6 +36,7 @@ interface LoanRow {
   status: string | null;
   documents: DocumentLink[];
   notes: string[];
+  repayment_history: RepaymentEvent[];
   profession: string | null;
   employer: string | null;
   employment_type: BorrowerProfile["employmentType"] | null;
@@ -66,6 +77,7 @@ function rowToLoan(row: LoanRow): Loan {
     amountPaid: n(row.amount_paid),
     lastPaymentOn: row.last_payment_on ?? undefined,
     repaidOn: row.repaid_on ?? undefined,
+    repaymentHistory: row.repayment_history.length > 0 ? row.repayment_history : undefined,
     documents: row.documents.length > 0 ? row.documents : undefined,
     notes: row.notes.length > 0 ? row.notes : undefined,
     ...borrowerProfile(row),

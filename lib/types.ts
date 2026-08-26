@@ -18,6 +18,18 @@ export interface BorrowerProfile {
   tenureYears?: number;
 }
 
+/**
+ * One logged, dated event in a borrower's actual repayment conduct — a commitment made, kept, or
+ * broken, or a payment received. This is the raw material for the "Payment reliability" credit
+ * factor: quantifiable behavior, not just a lateness count. Sourced from real correspondence
+ * (emails, calls) as it's reviewed — not automated.
+ */
+export interface RepaymentEvent {
+  date: string; // ISO date
+  type: "promise" | "partial_payment" | "full_payment" | "broken_promise";
+  description: string;
+}
+
 export interface Loan extends BorrowerProfile {
   id: string;
   borrower: string;
@@ -43,6 +55,8 @@ export interface Loan extends BorrowerProfile {
   lastPaymentOn?: string; // ISO date
   /** Set once the loan is fully settled — excludes it from the active book and portfolio totals, while keeping the record for history. */
   repaidOn?: string; // ISO date
+  /** Dated log of promises, payments, and broken commitments — feeds the credit score's "Payment reliability" factor. */
+  repaymentHistory?: RepaymentEvent[];
   documents?: DocumentLink[];
   notes?: string[];
 }

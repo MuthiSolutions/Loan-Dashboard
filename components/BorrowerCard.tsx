@@ -1,11 +1,26 @@
 import type { CreditScore, Grade } from "@/lib/creditScore";
-import { formatFCFA } from "@/lib/loans";
+import { formatDate, formatFCFA } from "@/lib/loans";
+import type { RepaymentEvent } from "@/lib/types";
 
 const GRADE_STYLE: Record<Grade, { bg: string; fg: string; ring: string }> = {
   A: { bg: "bg-[var(--ok-soft)]", fg: "text-[var(--ok)]", ring: "ring-[var(--ok)]/30" },
   B: { bg: "bg-[var(--paper)]", fg: "text-[var(--azure-deep)]", ring: "ring-[var(--azure)]/30" },
   C: { bg: "bg-[#f4e6c8]", fg: "text-[var(--amber)]", ring: "ring-[var(--amber)]/30" },
   D: { bg: "bg-[var(--danger-soft)]", fg: "text-[var(--danger)]", ring: "ring-[var(--danger)]/30" },
+};
+
+const EVENT_DOT: Record<RepaymentEvent["type"], string> = {
+  promise: "bg-[var(--azure)]",
+  partial_payment: "bg-[var(--ok)]",
+  full_payment: "bg-[var(--ok)]",
+  broken_promise: "bg-[var(--danger)]",
+};
+
+const EVENT_LABEL: Record<RepaymentEvent["type"], string> = {
+  promise: "Promise",
+  partial_payment: "Partial payment",
+  full_payment: "Paid in full",
+  broken_promise: "Broken promise",
 };
 
 export function BorrowerCard({
@@ -15,6 +30,7 @@ export function BorrowerCard({
   amountLabel,
   amount,
   score,
+  repaymentHistory,
 }: {
   name: string;
   subtitle?: string;
@@ -22,6 +38,7 @@ export function BorrowerCard({
   amountLabel: string;
   amount: number;
   score: CreditScore;
+  repaymentHistory?: RepaymentEvent[];
 }) {
   const style = GRADE_STYLE[score.grade];
 
@@ -62,6 +79,27 @@ export function BorrowerCard({
           </div>
         ))}
       </div>
+
+      {repaymentHistory && repaymentHistory.length > 0 && (
+        <div className="mt-4 border-t border-[var(--cream-2)] pt-3">
+          <p className="text-xs tracking-wide text-[var(--slate-soft)] uppercase">Repayment history</p>
+          <div className="mt-2 space-y-2">
+            {[...repaymentHistory]
+              .sort((a, b) => a.date.localeCompare(b.date))
+              .map((event, i) => (
+                <div key={i} className="flex gap-2 text-xs">
+                  <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${EVENT_DOT[event.type]}`} />
+                  <div className="min-w-0">
+                    <span className="font-medium text-[var(--slate)]">
+                      {formatDate(event.date)} — {EVENT_LABEL[event.type]}
+                    </span>
+                    <p className="text-[var(--slate-soft)]">{event.description}</p>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

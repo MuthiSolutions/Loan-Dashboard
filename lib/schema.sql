@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS loans (
   status TEXT,
   documents JSONB NOT NULL DEFAULT '[]',
   notes JSONB NOT NULL DEFAULT '[]',
+  repayment_history JSONB NOT NULL DEFAULT '[]',
   sort_order INT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()

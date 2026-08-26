@@ -1,4 +1,4 @@
-import type { BorrowerProfile } from "./types";
+import type { BorrowerProfile, RepaymentEvent } from "./types";
 
 export interface ScoreFactor {
   label: string;
@@ -24,54 +24,57 @@ export interface ScoringInput extends BorrowerProfile {
   documentsCount: number;
   repaymentState: RepaymentState;
   weeksLate?: number;
+  /** Logged promises, payments, and broken commitments — the actual behavioral record, not just a lateness count. */
+  repaymentHistory?: RepaymentEvent[];
 }
 
 /**
  * A first-pass, fully transparent scoring model — every point is traceable to a stated reason.
- * Weights and thresholds are a starting guess, not a calibrated risk model. Treat as a prototype.
+ * Weights and thresholds are a starting guess, not a calibrated risk model. Treat as a prototype,
+ * one that's meant to get sharper as more documented repayment history accumulates per borrower.
  */
 export function computeCreditScore(input: ScoringInput): CreditScore {
   const factors: ScoreFactor[] = [];
 
   const employmentPoints =
     input.employmentType === "CDI"
-      ? 30
+      ? 25
       : input.employmentType === "CDD"
-      ? 15
+      ? 12
       : input.employmentType === "Self-employed"
-      ? 10
+      ? 8
       : input.employmentType === "Informal"
-      ? 5
+      ? 4
       : 0;
   factors.push({
     label: "Employment stability",
     points: employmentPoints,
-    maxPoints: 30,
+    maxPoints: 25,
     detail: input.employmentType ? `${input.employmentType}${input.employer ? ` — ${input.employer}` : ""}` : "Not documented",
   });
 
   const incomeRatio = input.monthlyIncome && input.amountDue > 0 ? input.monthlyIncome / input.amountDue : null;
   const incomePoints =
-    incomeRatio === null ? 0 : incomeRatio >= 5 ? 25 : incomeRatio >= 3 ? 18 : incomeRatio >= 1.5 ? 10 : incomeRatio >= 1 ? 5 : 0;
+    incomeRatio === null ? 0 : incomeRatio >= 5 ? 20 : incomeRatio >= 3 ? 14 : incomeRatio >= 1.5 ? 8 : incomeRatio >= 1 ? 4 : 0;
   factors.push({
     label: "Income coverage",
     points: incomePoints,
-    maxPoints: 25,
+    maxPoints: 20,
     detail: incomeRatio !== null ? `Monthly income covers ${incomeRatio.toFixed(1)}× the amount owed` : "Income not declared",
   });
 
   const repaymentPoints =
     input.repaymentState === "not-yet-disbursed"
-      ? 15
+      ? 12
       : input.repaymentState === "on-track"
-      ? 25
-      : input.repaymentState === "due-soon"
       ? 20
-      : Math.max(0, 25 - (input.weeksLate ?? 1) * 8);
+      : input.repaymentState === "due-soon"
+      ? 16
+      : Math.max(0, 20 - (input.weeksLate ?? 1) * 7);
   factors.push({
-    label: "Repayment behavior",
+    label: "Repayment timing",
     points: repaymentPoints,
-    maxPoints: 25,
+    maxPoints: 20,
     detail:
       input.repaymentState === "not-yet-disbursed"
         ? "No repayment history yet — pipeline deal"
@@ -80,6 +83,23 @@ export function computeCreditScore(input: ScoringInput): CreditScore {
         : input.repaymentState === "due-soon"
         ? "On track, due soon"
         : "On track",
+  });
+
+  const history = input.repaymentHistory ?? [];
+  const brokenPromises = history.filter((e) => e.type === "broken_promise").length;
+  const hasPayment = history.some((e) => e.type === "partial_payment" || e.type === "full_payment");
+  const reliabilityPoints =
+    history.length === 0 ? 15 : Math.max(0, Math.min(15, 15 - brokenPromises * 5 + (hasPayment ? 5 : 0)));
+  factors.push({
+    label: "Payment reliability",
+    points: reliabilityPoints,
+    maxPoints: 15,
+    detail:
+      history.length === 0
+        ? "No commitments made or broken yet"
+        : `${brokenPromises} broken promise${brokenPromises === 1 ? "" : "s"}, ${
+            hasPayment ? "has made payment toward the debt" : "no payment made yet"
+          }, stayed in contact`,
   });
 
   const docPoints = input.documentsCount >= 2 ? 10 : input.documentsCount === 1 ? 5 : 0;

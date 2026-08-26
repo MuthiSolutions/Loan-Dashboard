@@ -6,7 +6,7 @@ Internal, password-gated dashboard tracking Muthi's outstanding loans, deadlines
 
 Everything lives in Postgres (`lib/schema.sql`), not in a code file:
 
-- **`loans`** — one table, a `kind` column (`active`, `pipeline_term`, `pipeline_pending`) covering all three loan shapes, plus payment-tracking columns (`amount_paid`, `last_payment_on`, `repaid_on`) and borrower-profile columns (`profession`, `employer`, `employment_type`, `monthly_income`, `tenure_years`) used by the credit scoring page.
+- **`loans`** — one table, a `kind` column (`active`, `pipeline_term`, `pipeline_pending`) covering all three loan shapes, plus payment-tracking columns (`amount_paid`, `last_payment_on`, `repaid_on`), borrower-profile columns (`profession`, `employer`, `employment_type`, `monthly_income`, `tenure_years`), and `repayment_history` (a dated log of promises, payments, and broken commitments) — all used by the credit scoring page.
 - **`cash_movements`** — every cash inflow/outflow, signed, tagged to an account (`bank` or `founder`) and optionally a `loan_id`. "In bank" and "held by founder" are `SUM(amount)` over this table — never a hand-maintained number, so they can't drift out of sync with what's actually happened. The old `cash_position` table is superseded and left unused rather than dropped.
 
 `lib/repo.ts` maps rows to the app's TypeScript types (`lib/types.ts`); `lib/loans.ts` holds the pure computation (status badges, days-until-due, accrued late penalties, profit vs. outstanding balance, portfolio totals) — all computed live from the DB facts and today's real date, so the dashboard never goes stale on its own.
@@ -52,3 +52,4 @@ railway logs --service romantic-expression
 - Editing an existing loan, and recording a payment/cash movement, from the UI (currently: add-only from the form; everything else goes through Postgres directly)
 - Surface `getRepaidLoans()` somewhere (a "recently repaid" section) — the data's tracked, just not shown yet
 - Possible future move under `muthisolutions.com/admin` once the main site has real login/credential infrastructure
+- Google Drive integration to pull due-diligence documents (including rejected applicants) directly into the credit score, instead of `repayment_history` being entered by hand from correspondence
