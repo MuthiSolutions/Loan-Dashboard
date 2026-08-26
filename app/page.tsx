@@ -1,6 +1,8 @@
-import { getActiveLoans, getCashPosition, getPipelineEntries } from "@/lib/repo";
+import { getActiveLoans, getCashPosition, getPipelineEntries, getRepaidLoans } from "@/lib/repo";
 import { formatFCFA, loansSortedByUrgency, portfolioTotals } from "@/lib/loans";
 import { CashPanel } from "@/components/CashPanel";
+import { ClosedLoanCard } from "@/components/ClosedLoanCard";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { Header } from "@/components/Header";
 import { LoanCard } from "@/components/LoanCard";
 import { PipelinePanel } from "@/components/PipelinePanel";
@@ -12,10 +14,11 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const asOf = new Date();
-  const [activeLoans, pipeline, cashPosition] = await Promise.all([
+  const [activeLoans, pipeline, cashPosition, repaidLoans] = await Promise.all([
     getActiveLoans(),
     getPipelineEntries(),
     getCashPosition(),
+    getRepaidLoans(),
   ]);
 
   const loans = loansSortedByUrgency(activeLoans, asOf);
@@ -76,10 +79,26 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <section>
-          <p className="eyebrow mb-3 text-[11px]">Pipeline</p>
+        <CollapsibleSection title={<p className="eyebrow text-[11px]">Pipeline</p>} defaultOpen>
           <PipelinePanel loans={pipeline} />
-        </section>
+        </CollapsibleSection>
+
+        {repaidLoans.length > 0 && (
+          <CollapsibleSection
+            title={
+              <p className="eyebrow text-[11px]">
+                Closed loans <span className="text-[var(--slate-soft)] normal-case tracking-normal">({repaidLoans.length})</span>
+              </p>
+            }
+            defaultOpen={false}
+          >
+            <div className="space-y-4">
+              {repaidLoans.map((loan) => (
+                <ClosedLoanCard key={loan.id} loan={loan} />
+              ))}
+            </div>
+          </CollapsibleSection>
+        )}
 
         <footer className="border-t border-[var(--cream-2)] pt-6 pb-4 text-xs text-[var(--slate-soft)]">
           Internal document — confidential loan terms and borrower information. Do not share outside Muthi Solutions.
