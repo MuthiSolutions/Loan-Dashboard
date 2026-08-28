@@ -101,6 +101,8 @@ export interface CashMovement {
   amount: number;
   description: string;
   loanId?: string;
+  /** Shared by both legs of an internal transfer between our own accounts, so the UI can show one "A -> B" line instead of a debit and a credit that net to zero. */
+  transferId?: string;
   occurredOn: string; // ISO date
 }
 

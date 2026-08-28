@@ -144,6 +144,7 @@ interface CashMovementRow {
   amount: string;
   description: string;
   loan_id: string | null;
+  transfer_id: string | null;
   occurred_on: string;
 }
 
@@ -154,6 +155,7 @@ function rowToMovement(row: CashMovementRow): CashMovement {
     amount: Number(row.amount),
     description: row.description,
     loanId: row.loan_id ?? undefined,
+    transferId: row.transfer_id ?? undefined,
     occurredOn: row.occurred_on,
   };
 }

@@ -48,6 +48,10 @@ CREATE TABLE IF NOT EXISTS cash_movements (
   amount BIGINT NOT NULL, -- signed: positive = inflow, negative = outflow
   description TEXT NOT NULL,
   loan_id TEXT REFERENCES loans(id) ON DELETE SET NULL,
+  -- Shared by both legs of an internal transfer between our own accounts (e.g. founder
+  -- handing cash to the bank). Lets the UI show one "A -> B" line instead of a debit and
+  -- a credit that net to zero and read as two unrelated, contradictory entries.
+  transfer_id TEXT,
   occurred_on DATE NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
