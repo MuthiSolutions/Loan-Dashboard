@@ -32,6 +32,13 @@ export default async function DashboardPage() {
       ? `${totals.dueSoonCount} due within 7 days`
       : "None";
 
+  const attentionSub =
+    totals.overdueCount > 0
+      ? `${totals.overdueCount} loan${totals.overdueCount > 1 ? "s" : ""} past due date`
+      : totals.dueSoonCount > 0
+      ? "Due within the next 7 days"
+      : "All loans on track";
+
   return (
     <div className="min-h-screen bg-[var(--cream)]">
       <Header asOf={asOf} current="/" />
@@ -60,13 +67,13 @@ export default async function DashboardPage() {
           <SummaryCard
             label="Expected profit"
             value={formatFCFA(totals.totalProfit)}
-            sub="Already included in the outstanding total above"
+            sub="Already counted inside Total outstanding"
             tone="ok"
           />
           <SummaryCard
             label="Needs attention"
             value={attentionLabel}
-            sub="Overdue or due within 7 days"
+            sub={attentionSub}
             tone={totals.overdueCount > 0 ? "danger" : totals.dueSoonCount > 0 ? "default" : "ok"}
           />
         </section>
