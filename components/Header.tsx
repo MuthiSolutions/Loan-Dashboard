@@ -5,6 +5,7 @@ const NAV_ITEMS = [
   { href: "/", label: "Dashboard" },
   { href: "/deadlines", label: "Deadlines" },
   { href: "/borrowers", label: "Borrowers" },
+  { href: "/ledger", label: "Ledger" },
 ];
 
 export function Header({ asOf, current = "/" }: { asOf: Date; current?: string }) {

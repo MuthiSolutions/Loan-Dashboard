@@ -66,10 +66,15 @@ export function portfolioTotals(loans: Loan[], asOf: Date = new Date()) {
   const totalGrossOwed = loans.reduce((sum, l) => sum + grossAmountDue(l, asOf), 0);
   const totalCurrentlyOwed = loans.reduce((sum, l) => sum + computeAmountDue(l, asOf), 0);
   const totalProfit = totalGrossOwed - totalPrincipal;
+  // Principal still genuinely exposed: original principal minus whatever's already been paid
+  // back on that loan. totalPrincipal (above) stays the gross, original figure since totalProfit
+  // is measured against it — this is a separate, payments-aware view for the "at risk" card.
+  const netPrincipalAtRisk = loans.reduce((sum, l) => sum + Math.max(0, l.principal - (l.amountPaid ?? 0)), 0);
   const overdueCount = loans.filter((l) => getLoanState(l, asOf) === "overdue").length;
   const dueSoonCount = loans.filter((l) => getLoanState(l, asOf) === "due-soon").length;
   return {
     totalPrincipal,
+    netPrincipalAtRisk,
     totalContracted,
     totalGrossOwed,
     totalCurrentlyOwed,

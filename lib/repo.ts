@@ -176,6 +176,12 @@ export async function getCashPosition(): Promise<CashPosition> {
   };
 }
 
+/** Full, uncollapsed movement history for the accounting ledger — every leg of every transfer included, oldest first. */
+export async function getAllCashMovements(): Promise<CashMovement[]> {
+  const { rows } = await pool.query<CashMovementRow>("SELECT * FROM cash_movements ORDER BY occurred_on, id");
+  return rows.map(rowToMovement);
+}
+
 export interface NewCashMovementInput {
   account: CashAccount;
   amount: number;

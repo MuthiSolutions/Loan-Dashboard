@@ -55,8 +55,8 @@ export default async function DashboardPage() {
           />
           <SummaryCard
             label="Principal at risk"
-            value={formatFCFA(totals.totalPrincipal)}
-            sub={`${totals.activeCount} active loans, not yet repaid`}
+            value={formatFCFA(totals.netPrincipalAtRisk)}
+            sub={`${totals.activeCount} active loans, net of principal already recovered`}
           />
           <SummaryCard
             label="Total outstanding"
