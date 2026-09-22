@@ -23,6 +23,7 @@ interface LoanRow {
   disbursed_on: string | null;
   due_on: string | null;
   late_penalty_rate_per_week: string;
+  late_penalty_period: "day" | "week";
   contract_ref: string | null;
   related_party: boolean;
   manual_amount_override: string | null;
@@ -70,6 +71,7 @@ function rowToLoan(row: LoanRow): Loan {
     disbursedOn: row.disbursed_on ?? undefined,
     dueOn: row.due_on!,
     latePenaltyRatePerWeek: Number(row.late_penalty_rate_per_week),
+    latePenaltyPeriod: row.late_penalty_period,
     contractRef: row.contract_ref ?? "",
     relatedParty: row.related_party || undefined,
     manualAmountOverride: n(row.manual_amount_override),

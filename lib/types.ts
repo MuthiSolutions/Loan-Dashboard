@@ -41,7 +41,9 @@ export interface Loan extends BorrowerProfile {
   totalDue: number;
   disbursedOn?: string; // ISO date
   dueOn: string; // ISO date
-  latePenaltyRatePerWeek: number; // e.g. 0.01 = 1% per week started, on totalDue
+  latePenaltyRatePerWeek: number; // e.g. 0.01 = 1% per period started, on totalDue
+  /** Which period latePenaltyRatePerWeek compounds over. Most loans are "week" per their signed convention; a few are "day" by separate agreement with the borrower. */
+  latePenaltyPeriod: "day" | "week";
   contractRef: string;
   /** Loan to a Muthi associate/insider rather than an outside client — flagged for governance visibility. */
   relatedParty?: boolean;

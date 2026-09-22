@@ -20,17 +20,28 @@ export function daysUntilDue(loan: Loan, asOf: Date = new Date()): number {
   return Math.round((due.getTime() - today.getTime()) / MS_PER_DAY);
 }
 
-/** Full weeks of delinquency started past the due date (0 if not yet due). */
+/** Full weeks of delinquency started past the due date (0 if not yet due). General lateness measure — independent of any one loan's own penalty period, e.g. used by credit scoring. */
 export function weeksLate(loan: Loan, asOf: Date = new Date()): number {
   const days = daysUntilDue(loan, asOf);
   if (days >= 0) return 0;
   return Math.ceil(-days / 7);
 }
 
-/** Formula amount: totalDue plus 1%/week-started penalty since the due date, per the contract's own terms. */
+/** Full days of delinquency past the due date (0 if not yet due). */
+export function daysLate(loan: Loan, asOf: Date = new Date()): number {
+  const days = daysUntilDue(loan, asOf);
+  return Math.max(0, -days);
+}
+
+/** How many penalty periods (days or weeks, per this loan's own latePenaltyPeriod) have started since the due date. */
+export function periodsLate(loan: Loan, asOf: Date = new Date()): number {
+  return loan.latePenaltyPeriod === "day" ? daysLate(loan, asOf) : weeksLate(loan, asOf);
+}
+
+/** Formula amount: totalDue plus the late penalty accrued per this loan's own period (day or week) since the due date. */
 export function formulaAmountDue(loan: Loan, asOf: Date = new Date()): number {
-  const weeks = weeksLate(loan, asOf);
-  return Math.round(loan.totalDue * (1 + loan.latePenaltyRatePerWeek * weeks));
+  const periods = periodsLate(loan, asOf);
+  return Math.round(loan.totalDue * (1 + loan.latePenaltyRatePerWeek * periods));
 }
 
 /** Full value of the deal as of this date — manual pin or formula — before netting out any payments already received. This is what profit is measured against, so a partial payment doesn't make the deal look smaller than it is. */

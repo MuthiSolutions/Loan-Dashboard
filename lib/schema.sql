@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS loans (
   disbursed_on DATE,
   due_on DATE,
   late_penalty_rate_per_week NUMERIC NOT NULL DEFAULT 0.01,
+  -- Which period the rate above compounds over. Defaults to "week" to match the standard
+  -- signed convention wording; a loan is only "day" by separate agreement with the borrower.
+  late_penalty_period TEXT NOT NULL DEFAULT 'week' CHECK (late_penalty_period IN ('day', 'week')),
   contract_ref TEXT,
   related_party BOOLEAN NOT NULL DEFAULT FALSE,
   manual_amount_override BIGINT,

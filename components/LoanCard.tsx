@@ -6,7 +6,7 @@ import {
   formatFCFA,
   getLoanState,
   grossAmountDue,
-  weeksLate,
+  periodsLate,
 } from "@/lib/loans";
 import { DocumentLinks } from "./DocumentLinks";
 import { ProfitBreakdown } from "./ProfitBreakdown";
@@ -17,7 +17,8 @@ export function LoanCard({ loan }: { loan: Loan }) {
   const days = daysUntilDue(loan);
   const grossNow = grossAmountDue(loan);
   const amountNow = computeAmountDue(loan);
-  const weeks = weeksLate(loan);
+  const periods = periodsLate(loan);
+  const periodUnit = loan.latePenaltyPeriod === "day" ? "day" : "wk";
 
   const amountTone =
     state === "overdue" ? "text-[var(--danger)]" : state === "due-soon" ? "text-[var(--amber)]" : "text-[var(--ink)]";
@@ -49,8 +50,8 @@ export function LoanCard({ loan }: { loan: Loan }) {
           hint={
             loan.manualAmountOverride !== undefined
               ? "manually pinned figure"
-              : weeks > 0
-              ? `incl. ${weeks} wk${weeks > 1 ? "s" : ""} × 1% late penalty`
+              : periods > 0
+              ? `incl. ${periods} ${periodUnit}${periods > 1 ? "s" : ""} × 1% late penalty`
               : undefined
           }
         />
