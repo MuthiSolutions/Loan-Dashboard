@@ -39,6 +39,9 @@ export interface ScoringInput extends BorrowerProfile {
 export function computeCreditScore(input: ScoringInput): CreditScore {
   const factors: ScoreFactor[] = [];
 
+  // Not knowing someone's employment type is not the same as knowing it's bad — treat it as
+  // neutral (half credit), the same principle already used below for undocumented tenure.
+  // Only an actually-declared, weak employment situation should score below that midpoint.
   const employmentPoints =
     input.employmentType === "CDI"
       ? 25
@@ -48,7 +51,7 @@ export function computeCreditScore(input: ScoringInput): CreditScore {
       ? 8
       : input.employmentType === "Informal"
       ? 4
-      : 0;
+      : 12;
   factors.push({
     label: "Employment stability",
     points: employmentPoints,
@@ -56,9 +59,23 @@ export function computeCreditScore(input: ScoringInput): CreditScore {
     detail: input.employmentType ? `${input.employmentType}${input.employer ? ` — ${input.employer}` : ""}` : "Not documented",
   });
 
+  // Same principle for income: an undeclared income is neutral, not a zero. A declared income
+  // that's genuinely thin relative to what's owed is what should score low.
   const incomeRatio = input.monthlyIncome && input.amountDue > 0 ? input.monthlyIncome / input.amountDue : null;
   const incomePoints =
-    incomeRatio === null ? 0 : incomeRatio >= 5 ? 20 : incomeRatio >= 3 ? 14 : incomeRatio >= 1.5 ? 8 : incomeRatio >= 1 ? 4 : 0;
+    input.monthlyIncome === undefined
+      ? 10
+      : input.amountDue <= 0
+      ? 20
+      : incomeRatio! >= 5
+      ? 20
+      : incomeRatio! >= 3
+      ? 14
+      : incomeRatio! >= 1.5
+      ? 8
+      : incomeRatio! >= 1
+      ? 4
+      : 0;
   factors.push({
     label: "Income coverage",
     points: incomePoints,
