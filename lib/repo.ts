@@ -135,6 +135,28 @@ export async function getRepaidLoans(): Promise<Loan[]> {
 
 export async function getPipelineEntries(): Promise<PipelineEntry[]> {
   const { rows } = await pool.query<LoanRow>(
+    "SELECT * FROM loans WHERE kind IN ('pipeline_term', 'pipeline_pending') AND declined_on IS NULL ORDER BY sort_order, created_at"
+  );
+  return rows.map(rowToPipelineEntry);
+}
+
+/**
+ * Every borrower Muthi has ever engaged with, active or repaid, for the Borrowers/credit-scoring
+ * page — deliberately unfiltered by repaid_on, unlike getActiveLoans(), since a repaid loan is
+ * still a real data point for scoring.
+ */
+export async function getAllBorrowerLoans(): Promise<Loan[]> {
+  const { rows } = await pool.query<LoanRow>("SELECT * FROM loans WHERE kind = 'active' ORDER BY sort_order, created_at");
+  return rows.map(rowToLoan);
+}
+
+/**
+ * Every pipeline entry Muthi has ever considered, including declined ones, for the
+ * Borrowers/credit-scoring page — deliberately unfiltered by declined_on, unlike
+ * getPipelineEntries(), since a declined deal is still a real data point for scoring.
+ */
+export async function getAllPipelineEntriesEverConsidered(): Promise<PipelineEntry[]> {
+  const { rows } = await pool.query<LoanRow>(
     "SELECT * FROM loans WHERE kind IN ('pipeline_term', 'pipeline_pending') ORDER BY sort_order, created_at"
   );
   return rows.map(rowToPipelineEntry);

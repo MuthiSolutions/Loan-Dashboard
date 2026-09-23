@@ -16,7 +16,7 @@ export interface CreditScore {
   factors: ScoreFactor[];
 }
 
-export type RepaymentState = "overdue" | "due-soon" | "on-track" | "not-yet-disbursed";
+export type RepaymentState = "overdue" | "due-soon" | "on-track" | "not-yet-disbursed" | "repaid";
 
 export interface ScoringInput extends BorrowerProfile {
   /** What the score is measured against — the amount actually owed, not just principal. */
@@ -67,7 +67,9 @@ export function computeCreditScore(input: ScoringInput): CreditScore {
   });
 
   const repaymentPoints =
-    input.repaymentState === "not-yet-disbursed"
+    input.repaymentState === "repaid"
+      ? 20
+      : input.repaymentState === "not-yet-disbursed"
       ? 12
       : input.repaymentState === "on-track"
       ? 20
@@ -79,7 +81,9 @@ export function computeCreditScore(input: ScoringInput): CreditScore {
     points: repaymentPoints,
     maxPoints: 20,
     detail:
-      input.repaymentState === "not-yet-disbursed"
+      input.repaymentState === "repaid"
+        ? "Fully repaid"
+        : input.repaymentState === "not-yet-disbursed"
         ? "No repayment history yet — pipeline deal"
         : input.repaymentState === "overdue"
         ? `Overdue, ${input.daysLate ?? 0} day${input.daysLate === 1 ? "" : "s"} late`

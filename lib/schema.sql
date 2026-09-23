@@ -20,6 +20,10 @@ CREATE TABLE IF NOT EXISTS loans (
   amount_paid BIGINT,
   last_payment_on DATE,
   repaid_on DATE,
+  -- Marks a pipeline deal as dead (declined or the client walked away) without deleting the
+  -- record — excluded from the dashboard's live Pipeline, but still counts on the Borrowers
+  -- page, which tracks every borrower Muthi has ever engaged with for scoring purposes.
+  declined_on DATE,
   requested_amount BIGINT,
   term_months INT,
   deferral_months INT,
