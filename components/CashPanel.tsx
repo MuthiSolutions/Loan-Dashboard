@@ -46,7 +46,7 @@ export function CashPanel({ cash }: { cash: CashPosition }) {
   return (
     <div className="rounded-2xl border border-[var(--sapphire-line)] bg-[var(--sapphire)] p-6 text-[var(--paper)] shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="eyebrow text-[11px] text-[var(--azure-soft)]">Cash position — ready to deploy</p>
+        <p className="eyebrow text-[11px] text-[var(--azure-soft)]">Cash position</p>
         <p className="font-display text-3xl font-semibold tabular">{formatFCFA(total)}</p>
       </div>
 
