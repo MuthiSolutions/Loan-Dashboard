@@ -20,6 +20,13 @@ export default async function BorrowersPage() {
     }
   }
 
+  // The earliest-disbursed loan per borrower is their first. Only that one can earn the
+  // early-repayment floor.
+  const firstLoanIdByBorrower = new Map<string, string>();
+  for (const loan of [...loans].sort((a, b) => (a.disbursedOn ?? a.dueOn).localeCompare(b.disbursedOn ?? b.dueOn))) {
+    if (!firstLoanIdByBorrower.has(loan.borrower)) firstLoanIdByBorrower.set(loan.borrower, loan.id);
+  }
+
   const activeEntries = loans.map((loan) => {
     const repaid = loan.repaidOn !== undefined;
     // For a repaid loan, score against what was actually collected, not a formula that would
@@ -33,6 +40,7 @@ export default async function BorrowersPage() {
       weeksLate: weeksLate(loan, asOf),
       daysLate: daysLate(loan, asOf),
       repaidEarly: repaid && loan.repaidOn! < loan.dueOn,
+      isFirstLoan: firstLoanIdByBorrower.get(loan.borrower) === loan.id,
       repaidLoanCount: repaidCountByBorrower.get(loan.borrower) ?? 0,
     };
     return {

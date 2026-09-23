@@ -80,8 +80,10 @@ export function ScoringRubric() {
             <p className="text-xs tracking-wide text-[var(--slate-soft)] uppercase">Two house rules</p>
             <ul className="mt-2 space-y-1.5 text-xs text-[var(--slate)]">
               <li>
-                <span className="font-medium text-[var(--ink)]">Repay early, get a B.</span> Anyone who settles in full
-                ahead of their due date is held at 80 minimum, whatever the rest of their file says.
+                <span className="font-medium text-[var(--ink)]">Repay your first loan early, get a B.</span> A first-time
+                borrower who settles in full ahead of their due date is held at 80 minimum, whatever the rest of their
+                file says. First loan only — on later loans the file has to earn its score, so a slip can't be wiped out
+                by repaying one loan early.
               </li>
               <li>
                 <span className="font-medium text-[var(--ink)]">Nobody is 100%.</span> The score is capped at 95. No

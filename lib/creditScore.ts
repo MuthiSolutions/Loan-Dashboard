@@ -33,13 +33,15 @@ export interface ScoringInput extends BorrowerProfile {
   daysLate?: number;
   /** Logged promises, payments, and broken commitments — the actual behavioral record, not just a lateness count. */
   repaymentHistory?: RepaymentEvent[];
-  /** The loan was settled in full before its due date. Guarantees at least a B. */
+  /** The loan was settled in full before its due date. */
   repaidEarly?: boolean;
+  /** This is the borrower's first loan with Muthi. The early-repayment floor only applies here — on later loans the file has to earn its score, so a borrower can't slip once or twice and then reset to a B by repaying one loan early. */
+  isFirstLoan?: boolean;
   /** How many loans this borrower has repaid in full with Muthi. Only a repeat borrower (2+) earns Track record points — the route into an A. */
   repaidLoanCount?: number;
 }
 
-/** Guaranteed minimum for anyone who repaid ahead of their due date. */
+/** Guaranteed minimum for a first-time borrower who repaid ahead of their due date. */
 const EARLY_REPAYMENT_FLOOR = 80;
 /** No one is 100% in this game: the top of the scale is deliberately unreachable. */
 const SCORE_CAP = 95;
@@ -181,8 +183,8 @@ export function computeCreditScore(input: ScoringInput): CreditScore {
   const maxTotal = factors.reduce((sum, f) => sum + f.maxPoints, 0);
 
   let floorNote: string | undefined;
-  if (input.repaidEarly && total < EARLY_REPAYMENT_FLOOR) {
-    floorNote = `Repaid ahead of the due date — held at a minimum of ${EARLY_REPAYMENT_FLOOR} (a B) regardless of the factor total.`;
+  if (input.repaidEarly && input.isFirstLoan && total < EARLY_REPAYMENT_FLOOR) {
+    floorNote = `First loan repaid ahead of the due date — held at a minimum of ${EARLY_REPAYMENT_FLOOR} (a B) regardless of the factor total.`;
     total = EARLY_REPAYMENT_FLOOR;
   }
 
