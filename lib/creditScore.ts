@@ -14,6 +14,10 @@ export interface CreditScore {
   maxTotal: number;
   grade: Grade;
   factors: ScoreFactor[];
+  /** Set when the early-repayment floor lifted the total — so the B is traceable to a stated reason, not a mystery. */
+  floorNote?: string;
+  /** Set when the cap held the total down — no borrower is treated as risk-free. */
+  capNote?: string;
 }
 
 export type RepaymentState = "overdue" | "due-soon" | "on-track" | "not-yet-disbursed" | "repaid";
@@ -29,74 +33,82 @@ export interface ScoringInput extends BorrowerProfile {
   daysLate?: number;
   /** Logged promises, payments, and broken commitments — the actual behavioral record, not just a lateness count. */
   repaymentHistory?: RepaymentEvent[];
+  /** The loan was settled in full before its due date. Guarantees at least a B. */
+  repaidEarly?: boolean;
+  /** How many loans this borrower has repaid in full with Muthi. Only a repeat borrower (2+) earns Track record points — the route into an A. */
+  repaidLoanCount?: number;
 }
 
+/** Guaranteed minimum for anyone who repaid ahead of their due date. */
+const EARLY_REPAYMENT_FLOOR = 70;
+/** No one is 100% in this game: the top of the scale is deliberately unreachable. */
+const SCORE_CAP = 95;
+
 /**
- * A first-pass, fully transparent scoring model — every point is traceable to a stated reason.
- * Weights and thresholds are a starting guess, not a calibrated risk model. Treat as a prototype,
- * one that's meant to get sharper as more documented repayment history accumulates per borrower.
+ * A fully transparent scoring model — every point is traceable to a stated reason.
+ *
+ * Two structural rules encode the house view of risk. The six profile-and-behavior factors
+ * sum to 84 at most, so a single perfect loan tops out as a strong B; the 16-point Track
+ * record factor only opens for a repeat borrower, which is the only real evidence of A-level
+ * reliability. And the total is capped at 95, so no borrower is ever treated as risk-free.
+ *
+ * "Not documented" is neutral (half credit) throughout, never a zero — not knowing something
+ * about a borrower is not the same as knowing it's bad.
  */
 export function computeCreditScore(input: ScoringInput): CreditScore {
   const factors: ScoreFactor[] = [];
 
-  // Not knowing someone's employment type is not the same as knowing it's bad — treat it as
-  // neutral (half credit), the same principle already used below for undocumented tenure.
-  // Only an actually-declared, weak employment situation should score below that midpoint.
   const employmentPoints =
     input.employmentType === "CDI"
-      ? 25
+      ? 20
       : input.employmentType === "CDD"
-      ? 12
+      ? 10
       : input.employmentType === "Self-employed"
-      ? 8
+      ? 6
       : input.employmentType === "Informal"
-      ? 4
-      : 12;
+      ? 3
+      : 10;
   factors.push({
     label: "Employment stability",
     points: employmentPoints,
-    maxPoints: 25,
+    maxPoints: 20,
     detail: input.employmentType ? `${input.employmentType}${input.employer ? ` — ${input.employer}` : ""}` : "Not documented",
   });
 
-  // Same principle for income: an undeclared income is neutral, not a zero. A declared income
-  // that's genuinely thin relative to what's owed is what should score low.
   const incomeRatio = input.monthlyIncome && input.amountDue > 0 ? input.monthlyIncome / input.amountDue : null;
   const incomePoints =
     input.monthlyIncome === undefined
-      ? 10
-      : input.amountDue <= 0
-      ? 20
-      : incomeRatio! >= 5
-      ? 20
-      : incomeRatio! >= 3
-      ? 14
-      : incomeRatio! >= 1.5
       ? 8
+      : input.amountDue <= 0
+      ? 15
+      : incomeRatio! >= 5
+      ? 15
+      : incomeRatio! >= 3
+      ? 11
+      : incomeRatio! >= 1.5
+      ? 6
       : incomeRatio! >= 1
-      ? 4
+      ? 3
       : 0;
   factors.push({
     label: "Income coverage",
     points: incomePoints,
-    maxPoints: 20,
+    maxPoints: 15,
     detail: incomeRatio !== null ? `Monthly income covers ${incomeRatio.toFixed(1)}× the amount owed` : "Income not declared",
   });
 
   const repaymentPoints =
-    input.repaymentState === "repaid"
-      ? 20
-      : input.repaymentState === "not-yet-disbursed"
-      ? 12
-      : input.repaymentState === "on-track"
-      ? 20
+    input.repaymentState === "repaid" || input.repaymentState === "on-track"
+      ? 18
       : input.repaymentState === "due-soon"
-      ? 16
-      : Math.max(0, 20 - (input.weeksLate ?? 1) * 7);
+      ? 14
+      : input.repaymentState === "not-yet-disbursed"
+      ? 11
+      : Math.max(0, 18 - (input.weeksLate ?? 1) * 6);
   factors.push({
     label: "Repayment timing",
     points: repaymentPoints,
-    maxPoints: 20,
+    maxPoints: 18,
     detail:
       input.repaymentState === "repaid"
         ? "Fully repaid"
@@ -126,34 +138,61 @@ export function computeCreditScore(input: ScoringInput): CreditScore {
           }, stayed in contact`,
   });
 
-  const docPoints = input.documentsCount >= 2 ? 10 : input.documentsCount === 1 ? 5 : 0;
+  const docPoints = input.documentsCount >= 2 ? 8 : input.documentsCount === 1 ? 4 : 0;
   factors.push({
     label: "Documentation on file",
     points: docPoints,
-    maxPoints: 10,
+    maxPoints: 8,
     detail: `${input.documentsCount} document${input.documentsCount === 1 ? "" : "s"} on file`,
   });
 
   const tenurePoints =
     input.tenureYears === undefined
-      ? 5
-      : input.tenureYears >= 5
-      ? 10
-      : input.tenureYears >= 2
-      ? 7
-      : input.tenureYears >= 1
       ? 4
+      : input.tenureYears >= 5
+      ? 8
+      : input.tenureYears >= 2
+      ? 6
+      : input.tenureYears >= 1
+      ? 3
       : 2;
   factors.push({
     label: "Job / business tenure",
     points: tenurePoints,
-    maxPoints: 10,
+    maxPoints: 8,
     detail: input.tenureYears !== undefined ? `${input.tenureYears} year${input.tenureYears === 1 ? "" : "s"}` : "Not documented",
   });
 
-  const total = factors.reduce((sum, f) => sum + f.points, 0);
+  const repaidLoans = input.repaidLoanCount ?? 0;
+  const trackRecordPoints = repaidLoans >= 2 ? 16 : 0;
+  factors.push({
+    label: "Track record",
+    points: trackRecordPoints,
+    maxPoints: 16,
+    detail:
+      repaidLoans >= 2
+        ? `${repaidLoans} loans repaid in full with Muthi — a proven repeat borrower`
+        : repaidLoans === 1
+        ? "One loan repaid — a second would prove the pattern"
+        : "First loan with Muthi — no repeat history yet",
+  });
+
+  let total = factors.reduce((sum, f) => sum + f.points, 0);
   const maxTotal = factors.reduce((sum, f) => sum + f.maxPoints, 0);
+
+  let floorNote: string | undefined;
+  if (input.repaidEarly && total < EARLY_REPAYMENT_FLOOR) {
+    floorNote = `Repaid ahead of the due date — held at a minimum of ${EARLY_REPAYMENT_FLOOR} (a B) regardless of the factor total.`;
+    total = EARLY_REPAYMENT_FLOOR;
+  }
+
+  let capNote: string | undefined;
+  if (total > SCORE_CAP) {
+    capNote = `Capped at ${SCORE_CAP} — no borrower is treated as risk-free.`;
+    total = SCORE_CAP;
+  }
+
   const grade: Grade = total >= 85 ? "A" : total >= 70 ? "B" : total >= 55 ? "C" : "D";
 
-  return { total, maxTotal, grade, factors };
+  return { total, maxTotal, grade, factors, floorNote, capNote };
 }

@@ -3,12 +3,22 @@ import { computeAmountDue, daysLate, getLoanState, weeksLate } from "@/lib/loans
 import { computeCreditScore, type ScoringInput } from "@/lib/creditScore";
 import { BorrowerCard } from "@/components/BorrowerCard";
 import { Header } from "@/components/Header";
+import { ScoringRubric } from "@/components/ScoringRubric";
 
 export const dynamic = "force-dynamic";
 
 export default async function BorrowersPage() {
   const asOf = new Date();
   const [loans, pipeline] = await Promise.all([getAllBorrowerLoans(), getAllPipelineEntriesEverConsidered()]);
+
+  // A borrower is still just a name on each loan row, so repeat behavior is grouped by exact name
+  // for now. Every borrower currently has one loan, which correctly means nobody reaches an A yet.
+  const repaidCountByBorrower = new Map<string, number>();
+  for (const loan of loans) {
+    if (loan.repaidOn !== undefined) {
+      repaidCountByBorrower.set(loan.borrower, (repaidCountByBorrower.get(loan.borrower) ?? 0) + 1);
+    }
+  }
 
   const activeEntries = loans.map((loan) => {
     const repaid = loan.repaidOn !== undefined;
@@ -22,6 +32,8 @@ export default async function BorrowersPage() {
       repaymentState: repaid ? "repaid" : getLoanState(loan, asOf),
       weeksLate: weeksLate(loan, asOf),
       daysLate: daysLate(loan, asOf),
+      repaidEarly: repaid && loan.repaidOn! < loan.dueOn,
+      repaidLoanCount: repaidCountByBorrower.get(loan.borrower) ?? 0,
     };
     return {
       id: loan.id,
@@ -64,16 +76,16 @@ export default async function BorrowersPage() {
       <main className="mx-auto max-w-6xl space-y-6 px-6 py-8">
         <div>
           <p className="eyebrow text-[11px]">Borrower profiles</p>
-          <h2 className="font-display text-2xl font-semibold text-[var(--ink)]">Credit scoring — prototype</h2>
+          <h2 className="font-display text-2xl font-semibold text-[var(--ink)]">Credit scoring</h2>
           <p className="mt-2 max-w-2xl text-sm text-[var(--slate-soft)]">
             Every borrower Muthi has engaged with — disbursed, repaid, or a pipeline deal that didn't go
             through — kept here for the broadest possible base to score and analyze against, independent of
-            what's currently active on the main dashboard. Built from what we already have on file —
-            employment, income, documentation, and repayment behavior. The weights below are a first guess,
-            not a finalized credit policy — every point traces back to a stated reason so it's easy to argue
-            with.
+            what's currently active on the main dashboard. Every point traces back to a stated reason; the
+            rubric below shows exactly how a score is built.
           </p>
         </div>
+
+        <ScoringRubric />
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {entries.map((e) => (

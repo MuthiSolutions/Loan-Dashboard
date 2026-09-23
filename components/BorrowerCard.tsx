@@ -80,6 +80,13 @@ export function BorrowerCard({
         ))}
       </div>
 
+      {(score.floorNote || score.capNote) && (
+        <div className="mt-3 space-y-1 border-t border-[var(--cream-2)] pt-3">
+          {score.floorNote && <p className="text-[11px] text-[var(--azure-deep)]">{score.floorNote}</p>}
+          {score.capNote && <p className="text-[11px] text-[var(--slate-soft)]">{score.capNote}</p>}
+        </div>
+      )}
+
       {repaymentHistory && repaymentHistory.length > 0 && (
         <div className="mt-4 border-t border-[var(--cream-2)] pt-3">
           <p className="text-xs tracking-wide text-[var(--slate-soft)] uppercase">Repayment history</p>
