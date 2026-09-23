@@ -4,9 +4,9 @@ import type { RepaymentEvent } from "@/lib/types";
 
 const GRADE_STYLE: Record<Grade, { bg: string; fg: string; ring: string }> = {
   A: { bg: "bg-[var(--ok-soft)]", fg: "text-[var(--ok)]", ring: "ring-[var(--ok)]/30" },
+  "B+": { bg: "bg-[var(--paper)]", fg: "text-[var(--azure-deep)]", ring: "ring-[var(--azure-deep)]/50" },
   B: { bg: "bg-[var(--paper)]", fg: "text-[var(--azure-deep)]", ring: "ring-[var(--azure)]/30" },
   C: { bg: "bg-[#f4e6c8]", fg: "text-[var(--amber)]", ring: "ring-[var(--amber)]/30" },
-  D: { bg: "bg-[var(--danger-soft)]", fg: "text-[var(--danger)]", ring: "ring-[var(--danger)]/30" },
 };
 
 const EVENT_DOT: Record<RepaymentEvent["type"], string> = {

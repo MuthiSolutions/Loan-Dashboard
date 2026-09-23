@@ -67,7 +67,9 @@ export default async function BorrowersPage() {
     };
   });
 
-  const entries = [...activeEntries, ...pipelineEntries];
+  const entries = [...activeEntries, ...pipelineEntries].sort(
+    (a, b) => b.score.total - a.score.total || a.name.localeCompare(b.name)
+  );
 
   return (
     <div className="min-h-screen bg-[var(--cream)]">

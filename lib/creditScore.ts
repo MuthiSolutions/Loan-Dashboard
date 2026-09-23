@@ -7,7 +7,7 @@ export interface ScoreFactor {
   detail: string;
 }
 
-export type Grade = "A" | "B" | "C" | "D";
+export type Grade = "A" | "B+" | "B" | "C";
 
 export interface CreditScore {
   total: number;
@@ -40,7 +40,7 @@ export interface ScoringInput extends BorrowerProfile {
 }
 
 /** Guaranteed minimum for anyone who repaid ahead of their due date. */
-const EARLY_REPAYMENT_FLOOR = 70;
+const EARLY_REPAYMENT_FLOOR = 80;
 /** No one is 100% in this game: the top of the scale is deliberately unreachable. */
 const SCORE_CAP = 95;
 
@@ -48,9 +48,9 @@ const SCORE_CAP = 95;
  * A fully transparent scoring model — every point is traceable to a stated reason.
  *
  * Two structural rules encode the house view of risk. The six profile-and-behavior factors
- * sum to 84 at most, so a single perfect loan tops out as a strong B; the 16-point Track
- * record factor only opens for a repeat borrower, which is the only real evidence of A-level
- * reliability. And the total is capped at 95, so no borrower is ever treated as risk-free.
+ * sum to 84 at most, so a single perfect loan tops out as a B (80–84); the 16-point Track
+ * record factor only opens for a repeat borrower, which is the only route to a B+ (85–90) or
+ * an A (91+). And the total is capped at 95, so no borrower is ever treated as risk-free.
  *
  * "Not documented" is neutral (half credit) throughout, never a zero — not knowing something
  * about a borrower is not the same as knowing it's bad.
@@ -192,7 +192,7 @@ export function computeCreditScore(input: ScoringInput): CreditScore {
     total = SCORE_CAP;
   }
 
-  const grade: Grade = total >= 85 ? "A" : total >= 70 ? "B" : total >= 55 ? "C" : "D";
+  const grade: Grade = total >= 91 ? "A" : total >= 85 ? "B+" : total >= 80 ? "B" : "C";
 
   return { total, maxTotal, grade, factors, floorNote, capNote };
 }

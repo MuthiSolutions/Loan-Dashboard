@@ -59,19 +59,20 @@ export function ScoringRubric() {
             <p className="text-xs tracking-wide text-[var(--slate-soft)] uppercase">Grades</p>
             <ul className="mt-2 space-y-1.5 text-xs text-[var(--slate)]">
               <li>
-                <span className="font-semibold text-[var(--ok)]">A · 85 and above</span> — a proven repeat borrower. The six
-                profile and behavior factors add up to 84 at most, so a first loan cannot reach an A on its own.
+                <span className="font-semibold text-[var(--ok)]">A · 91 to 100</span> — a proven repeat borrower with a
+                near-perfect file. The scale is capped at 95, so this is rare by design.
               </li>
               <li>
-                <span className="font-semibold text-[var(--azure-deep)]">B · 70 to 84</span> — very good. Where a strong
+                <span className="font-semibold text-[var(--azure-deep)]">B+ · 85 to 90</span> — a repeat borrower. The six
+                profile and behavior factors add up to 84 at most, so nobody gets here on a first loan.
+              </li>
+              <li>
+                <span className="font-semibold text-[var(--azure-deep)]">B · 80 to 84</span> — very good. Where a strong
                 first-time borrower lands.
               </li>
               <li>
-                <span className="font-semibold text-[var(--amber)]">C · 55 to 69</span> — acceptable, with something to
-                watch.
-              </li>
-              <li>
-                <span className="font-semibold text-[var(--danger)]">D · below 55</span> — real negative signal on file.
+                <span className="font-semibold text-[var(--amber)]">C · below 80</span> — not yet proven, or something on
+                file to watch.
               </li>
             </ul>
           </div>
@@ -80,7 +81,7 @@ export function ScoringRubric() {
             <ul className="mt-2 space-y-1.5 text-xs text-[var(--slate)]">
               <li>
                 <span className="font-medium text-[var(--ink)]">Repay early, get a B.</span> Anyone who settles in full
-                ahead of their due date is held at 70 minimum, whatever the rest of their file says.
+                ahead of their due date is held at 80 minimum, whatever the rest of their file says.
               </li>
               <li>
                 <span className="font-medium text-[var(--ink)]">Nobody is 100%.</span> The score is capped at 95. No
