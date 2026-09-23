@@ -1,5 +1,5 @@
 import { getActiveLoans, getPipelineEntries } from "@/lib/repo";
-import { computeAmountDue, getLoanState, weeksLate } from "@/lib/loans";
+import { computeAmountDue, daysLate, getLoanState, weeksLate } from "@/lib/loans";
 import { computeCreditScore, type ScoringInput } from "@/lib/creditScore";
 import { BorrowerCard } from "@/components/BorrowerCard";
 import { Header } from "@/components/Header";
@@ -18,6 +18,7 @@ export default async function BorrowersPage() {
       documentsCount: loan.documents?.length ?? 0,
       repaymentState: getLoanState(loan, asOf),
       weeksLate: weeksLate(loan, asOf),
+      daysLate: daysLate(loan, asOf),
     };
     return {
       id: loan.id,

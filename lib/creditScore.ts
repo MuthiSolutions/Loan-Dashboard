@@ -23,7 +23,10 @@ export interface ScoringInput extends BorrowerProfile {
   amountDue: number;
   documentsCount: number;
   repaymentState: RepaymentState;
+  /** Used for the point deduction below — calibrated in weeks regardless of any one loan's own penalty period. */
   weeksLate?: number;
+  /** Used only for the "Overdue, X days late" label, which is clearer than weeks and matches how the loan card itself shows lateness. */
+  daysLate?: number;
   /** Logged promises, payments, and broken commitments — the actual behavioral record, not just a lateness count. */
   repaymentHistory?: RepaymentEvent[];
 }
@@ -79,7 +82,7 @@ export function computeCreditScore(input: ScoringInput): CreditScore {
       input.repaymentState === "not-yet-disbursed"
         ? "No repayment history yet — pipeline deal"
         : input.repaymentState === "overdue"
-        ? `Overdue, ${input.weeksLate ?? 0} week(s) late`
+        ? `Overdue, ${input.daysLate ?? 0} day${input.daysLate === 1 ? "" : "s"} late`
         : input.repaymentState === "due-soon"
         ? "On track, due soon"
         : "On track",
