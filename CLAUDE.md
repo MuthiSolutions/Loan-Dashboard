@@ -62,6 +62,23 @@ same principal and earn the fee each time. Gross principal deployed flatters tha
   own capital rather than as recycled lending capital is reasonable. Do not silently switch
   between the two numbers.
 
+## Analyst commissions
+
+Louis and Emmanuel take **20% of the profit** on every loan as the analyst fee. It lives in
+the `commissions` table, one row per loan, with `basis_profit` recording the profit figure
+the rate was applied to so the arithmetic stays checkable if a loan is later restated.
+
+- `status = 'paid'` means the money has reached the analysts **and** there is a matching
+  outflow in `cash_movements`. Do not mark a commission paid without that movement.
+- `status = 'payable'` means it is owed but still with JP, who was advanced the fees and
+  settles with us afterwards. A payable commission is **not** a cash movement and must stay
+  out of the cash position, or the balances book money that has not moved.
+- PRAÏA is the one exception to the 20%: a flat 300,000 agreed for that deal, which works out
+  at 17.9% of the 1,680,000 profit collected. It came out of the final 680,000 the borrower
+  sent on 9 September, 300,000 to the analysts and 380,000 to JP.
+- The fee is computed on **realised** profit, which includes late penalties collected. Do not
+  use the contracted profit.
+
 ## Where things live
 
 - `lib/schema.sql` — canonical DB schema (source of truth; `scripts/migrate.mjs` is a
