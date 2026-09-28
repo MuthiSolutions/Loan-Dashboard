@@ -41,6 +41,27 @@ deployment on purpose.
 - One-off data-fix/seed scripts live in `scripts/` and get committed (not deleted after
   running) so there's an audit trail of what changed and why.
 
+## Capital: new money versus recycled money
+
+The founder tracks these separately, because the business model is to keep re-lending the
+same principal and earn the fee each time. Gross principal deployed flatters that badly.
+
+- **Own money put in, as at 28 September 2026: 6,150,000 FCFA.** This is the agreed baseline
+  and the figure to quote. It is every principal disbursed to that date except Marie Andréa
+  Koizan's renewable cycle 1, which re-lent the 300,000 she had just repaid.
+- **New money** is capital the founders had to find. **Recycled money** is a disbursement
+  funded by principal a borrower had already handed back.
+- From 28 September 2026 onward, every new disbursement is classified as one or the other
+  when it is recorded, and the running total of own money is carried forward from 6,150,000.
+- Gross principal deployed is a different number and should not be presented as money put in.
+  At the baseline date it was 6,450,000.
+- A first-principles recomputation from disbursement and repayment dates gives 6,000,000 of
+  new money, because it also treats Ane Jean Philippe's 150,000 in August as recycled from
+  Ouattara-Boni's repayment three days earlier. The founder's 6,150,000 is the adopted
+  figure. Ouattara-Boni was an interest-free related-party loan, so counting its return as
+  own capital rather than as recycled lending capital is reasonable. Do not silently switch
+  between the two numbers.
+
 ## Where things live
 
 - `lib/schema.sql` — canonical DB schema (source of truth; `scripts/migrate.mjs` is a
