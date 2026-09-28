@@ -62,3 +62,26 @@ CREATE TABLE IF NOT EXISTS cash_movements (
   occurred_on DATE NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- The analyst fee Louis and Emmanuel take on a loan's profit, 20% by standing
+-- agreement. One row per loan, storing the profit it was computed on so the
+-- arithmetic stays auditable even if the loan is later restated.
+--
+-- 'paid' means the money has actually reached the analysts and there is a
+-- matching outflow in cash_movements. 'payable' means it is owed but still
+-- sitting with JP, who was advanced the fees and settles with us afterwards —
+-- so a payable commission is NOT yet a cash movement, and must not be counted
+-- against the balances.
+CREATE TABLE IF NOT EXISTS commissions (
+  id SERIAL PRIMARY KEY,
+  loan_id TEXT NOT NULL REFERENCES loans(id) ON DELETE CASCADE,
+  beneficiaries TEXT NOT NULL,
+  basis_profit BIGINT NOT NULL, -- the profit figure the rate was applied to
+  rate NUMERIC,                 -- e.g. 0.20; NULL where the amount was agreed outright
+  amount BIGINT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('paid', 'payable')),
+  paid_on DATE,
+  notes JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

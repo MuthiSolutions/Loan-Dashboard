@@ -1,8 +1,9 @@
-import { getActiveLoans, getCashPosition, getPipelineEntries, getRepaidLoans } from "@/lib/repo";
+import { getActiveLoans, getCashPosition, getCommissions, getPipelineEntries, getRepaidLoans } from "@/lib/repo";
 import { formatFCFA, loanNumbersByBorrower, loansSortedByUrgency, portfolioTotals } from "@/lib/loans";
 import { CashPanel } from "@/components/CashPanel";
 import { ClosedLoanCard } from "@/components/ClosedLoanCard";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
+import { CommissionsPanel } from "@/components/CommissionsPanel";
 import { Header } from "@/components/Header";
 import { LoanCard } from "@/components/LoanCard";
 import { PipelinePanel } from "@/components/PipelinePanel";
@@ -14,11 +15,12 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const asOf = new Date();
-  const [activeLoans, pipeline, cashPosition, repaidLoans] = await Promise.all([
+  const [activeLoans, pipeline, cashPosition, repaidLoans, commissions] = await Promise.all([
     getActiveLoans(),
     getPipelineEntries(),
     getCashPosition(),
     getRepaidLoans(),
+    getCommissions(),
   ]);
 
   const loans = loansSortedByUrgency(activeLoans, asOf);
@@ -27,6 +29,14 @@ export default async function DashboardPage() {
   // second loan would show as their first.
   const loanNumbers = loanNumbersByBorrower([...activeLoans, ...repaidLoans]);
   const totalDeployable = cashPosition.inBank + cashPosition.heldByFounder;
+
+  // A commission names a loan id; the panel shows who the loan was to.
+  const loansById = new Map([...activeLoans, ...repaidLoans].map((l) => [l.id, l]));
+  const commissionRows = commissions.map((c) => ({
+    ...c,
+    borrower: loansById.get(c.loanId)?.borrower ?? c.loanId,
+    loanNumber: loanNumbers.get(c.loanId)?.number,
+  }));
 
   const attentionLabel =
     totals.overdueCount > 0
@@ -97,6 +107,8 @@ export default async function DashboardPage() {
             ))}
           </div>
         </section>
+
+        <CommissionsPanel commissions={commissionRows} />
 
         <CollapsibleSection title={<p className="eyebrow text-[11px]">Pipeline</p>} defaultOpen>
           <PipelinePanel loans={pipeline} />

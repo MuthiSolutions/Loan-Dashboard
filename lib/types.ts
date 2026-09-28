@@ -114,3 +114,25 @@ export interface CashPosition {
   heldByFounder: number;
   movements: CashMovement[];
 }
+
+/**
+ * The analyst fee Louis and Emmanuel take on a loan's profit, 20% by standing agreement.
+ *
+ * "paid" means the money has reached the analysts and a matching outflow exists in
+ * cash_movements. "payable" means it is owed but still with JP, who was advanced the fees
+ * and settles afterwards — so a payable commission is NOT yet a cash movement and must not
+ * be netted against the balances.
+ */
+export interface Commission {
+  id: number;
+  loanId: string;
+  beneficiaries: string;
+  /** The profit figure the rate was applied to, kept so the arithmetic stays auditable. */
+  basisProfit: number;
+  /** e.g. 0.2; undefined where the amount was agreed outright rather than computed. */
+  rate?: number;
+  amount: number;
+  status: "paid" | "payable";
+  paidOn?: string; // ISO date
+  notes: string[];
+}

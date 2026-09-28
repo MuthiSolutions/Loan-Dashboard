@@ -4,6 +4,7 @@ import type {
   CashAccount,
   CashMovement,
   CashPosition,
+  Commission,
   DocumentLink,
   Loan,
   LoanFee,
@@ -272,4 +273,41 @@ export async function insertLoan(input: NewLoanInput): Promise<void> {
       JSON.stringify(input.notes ?? []),
     ]
   );
+}
+
+interface CommissionRow {
+  id: number;
+  loan_id: string;
+  beneficiaries: string;
+  basis_profit: string;
+  rate: string | null;
+  amount: string;
+  status: "paid" | "payable";
+  paid_on: string | null;
+  notes: string[];
+}
+
+/**
+ * Analyst commissions, newest first, paid ones after the ones still owed — what is still
+ * outstanding is the part that needs chasing, so it reads first.
+ *
+ * A payable commission is deliberately NOT a cash movement: the fee was advanced to JP and
+ * comes back afterwards, so counting it against the balances would double-count money that
+ * has not moved.
+ */
+export async function getCommissions(): Promise<Commission[]> {
+  const { rows } = await pool.query<CommissionRow>(
+    `SELECT * FROM commissions ORDER BY status DESC, amount DESC, loan_id`
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    loanId: row.loan_id,
+    beneficiaries: row.beneficiaries,
+    basisProfit: Number(row.basis_profit),
+    rate: row.rate === null ? undefined : Number(row.rate),
+    amount: Number(row.amount),
+    status: row.status,
+    paidOn: row.paid_on ?? undefined,
+    notes: row.notes ?? [],
+  }));
 }
