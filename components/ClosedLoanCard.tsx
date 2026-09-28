@@ -1,15 +1,26 @@
 import type { Loan } from "@/lib/types";
 import { formatDate, formatFCFA } from "@/lib/loans";
 
-export function ClosedLoanCard({ loan }: { loan: Loan }) {
+export function ClosedLoanCard({ loan, loanNumber }: { loan: Loan; loanNumber?: number }) {
   const collected = loan.amountPaid ?? loan.totalDue;
-  const profitRealized = loan.totalDue - loan.principal;
+  // Realised profit is what actually came in, less the principal. Using totalDue here
+  // would report the CONTRACTED profit and silently drop every late penalty collected:
+  // it understated PRAÏA by 430,000, David Allan by 40,000 and Konan by 12,000.
+  const profitRealized = collected - loan.principal;
+  const penaltyCollected = collected - loan.totalDue;
 
   return (
     <div className="rounded-2xl border border-[var(--sapphire-line)] bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="font-display text-base font-semibold text-[var(--ink)]">{loan.borrower}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-display text-base font-semibold text-[var(--ink)]">{loan.borrower}</p>
+            {loanNumber !== undefined && (
+              <span className="rounded-full bg-[var(--cream-2)] px-2 py-0.5 text-[11px] font-semibold text-[var(--slate)]">
+                Loan #{loanNumber}
+              </span>
+            )}
+          </div>
           <p className="mt-0.5 text-sm text-[var(--slate)]">{loan.purpose}</p>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--ok-soft)] px-3 py-1 text-xs font-semibold text-[var(--ok)]">
@@ -21,7 +32,16 @@ export function ClosedLoanCard({ loan }: { loan: Loan }) {
       <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
         <Stat label="Principal" value={formatFCFA(loan.principal)} />
         <Stat label="Collected" value={formatFCFA(collected)} />
-        <Stat label="Profit realized" value={formatFCFA(profitRealized)} tone="text-[var(--ok)]" />
+        <Stat
+          label="Profit realized"
+          value={formatFCFA(profitRealized)}
+          tone="text-[var(--ok)]"
+          sub={
+            penaltyCollected > 0
+              ? `${formatFCFA(loan.totalDue - loan.principal)} contracted + ${formatFCFA(penaltyCollected)} penalty`
+              : undefined
+          }
+        />
         <Stat
           label="Disbursed → Repaid"
           value={`${loan.disbursedOn ? formatDate(loan.disbursedOn) : "—"} → ${loan.repaidOn ? formatDate(loan.repaidOn) : "—"}`}
@@ -42,11 +62,22 @@ export function ClosedLoanCard({ loan }: { loan: Loan }) {
   );
 }
 
-function Stat({ label, value, tone = "text-[var(--ink)]" }: { label: string; value: string; tone?: string }) {
+function Stat({
+  label,
+  value,
+  tone = "text-[var(--ink)]",
+  sub,
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+  sub?: string;
+}) {
   return (
     <div>
       <p className="text-[11px] tracking-wide text-[var(--slate-soft)] uppercase">{label}</p>
       <p className={`mt-0.5 font-semibold tabular ${tone}`}>{value}</p>
+      {sub && <p className="mt-0.5 text-[11px] text-[var(--slate-soft)]">{sub}</p>}
     </div>
   );
 }
