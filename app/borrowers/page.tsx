@@ -12,7 +12,10 @@ export default async function BorrowersPage() {
   const [loans, pipeline] = await Promise.all([getAllBorrowerLoans(), getAllPipelineEntriesEverConsidered()]);
 
   // A borrower is still just a name on each loan row, so repeat behavior is grouped by exact name
-  // for now. Every borrower currently has one loan, which correctly means nobody reaches an A yet.
+  // for now. Marie Andréa Koizan is the first borrower with two rows: her repaid August loan and
+  // cycle 1 of her renewable facility. Both read her one repaid loan, so Track record stays 0 until
+  // she completes a second. Two cards therefore carry her name with different grades, and nothing on
+  // the page says they are the same person. A borrower entity is the real fix.
   const repaidCountByBorrower = new Map<string, number>();
   for (const loan of loans) {
     if (loan.repaidOn !== undefined) {
