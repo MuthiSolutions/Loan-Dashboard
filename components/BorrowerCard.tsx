@@ -31,6 +31,7 @@ export function BorrowerCard({
   amount,
   score,
   repaymentHistory,
+  loanNumber,
 }: {
   name: string;
   subtitle?: string;
@@ -39,6 +40,7 @@ export function BorrowerCard({
   amount: number;
   score: CreditScore;
   repaymentHistory?: RepaymentEvent[];
+  loanNumber?: number;
 }) {
   const style = GRADE_STYLE[score.grade];
 
@@ -46,7 +48,14 @@ export function BorrowerCard({
     <div className="rounded-2xl border border-[var(--sapphire-line)] bg-white p-6 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="font-display text-lg font-semibold text-[var(--ink)]">{name}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-display text-lg font-semibold text-[var(--ink)]">{name}</p>
+            {loanNumber !== undefined && (
+              <span className="rounded-full bg-[var(--cream-2)] px-2 py-0.5 text-[11px] font-semibold text-[var(--slate)]">
+                Loan #{loanNumber}
+              </span>
+            )}
+          </div>
           {subtitle && <p className="mt-0.5 truncate text-sm text-[var(--slate)]">{subtitle}</p>}
           {contact && <p className="mt-0.5 text-xs text-[var(--slate-soft)]">{contact}</p>}
         </div>

@@ -12,7 +12,7 @@ import { DocumentLinks } from "./DocumentLinks";
 import { ProfitBreakdown } from "./ProfitBreakdown";
 import { StatusBadge } from "./StatusBadge";
 
-export function LoanCard({ loan }: { loan: Loan }) {
+export function LoanCard({ loan, loanNumber }: { loan: Loan; loanNumber?: number }) {
   const state = getLoanState(loan);
   const days = daysUntilDue(loan);
   const grossNow = grossAmountDue(loan);
@@ -29,6 +29,11 @@ export function LoanCard({ loan }: { loan: Loan }) {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-display text-lg font-semibold text-[var(--ink)]">{loan.borrower}</p>
+            {loanNumber !== undefined && (
+              <span className="rounded-full bg-[var(--cream-2)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--slate)]">
+                Loan #{loanNumber}
+              </span>
+            )}
             {loan.relatedParty && (
               <span className="rounded-full bg-[#f4e6c8] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--amber)]">
                 Related party

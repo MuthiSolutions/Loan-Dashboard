@@ -72,6 +72,35 @@ export function getLoanState(loan: Loan, asOf: Date = new Date()): LoanState {
  */
 export const WORKING_CAPITAL_DEPOSITED = 6_150_000;
 
+/**
+ * Which loan this is in a borrower's own sequence: their first is #1, their next #2.
+ * Marie Andréa Koizan is the first borrower with more than one, and without this there
+ * was no way to tell her two cards apart on the page.
+ *
+ * Pass EVERY loan, active and repaid, or the numbering is wrong. Ordered by disbursement
+ * date, falling back to the due date, then the id so the result is stable.
+ *
+ * Borrowers are still matched on the exact name string, the same way the credit score
+ * counts repeat business. A borrower entity is the real fix for both.
+ */
+export function loanNumbersByBorrower(loans: Loan[]): Map<string, { number: number; totalForBorrower: number }> {
+  const byBorrower = new Map<string, Loan[]>();
+  for (const loan of loans) {
+    const list = byBorrower.get(loan.borrower) ?? [];
+    list.push(loan);
+    byBorrower.set(loan.borrower, list);
+  }
+
+  const result = new Map<string, { number: number; totalForBorrower: number }>();
+  for (const [, list] of byBorrower) {
+    const ordered = [...list].sort((a, b) =>
+      (a.disbursedOn ?? a.dueOn ?? "").localeCompare(b.disbursedOn ?? b.dueOn ?? "") || a.id.localeCompare(b.id)
+    );
+    ordered.forEach((loan, i) => result.set(loan.id, { number: i + 1, totalForBorrower: ordered.length }));
+  }
+  return result;
+}
+
 /** What was contracted to be earned on this deal — total due at maturity minus principal disbursed, before any late penalty. */
 export function contractedProfit(loan: Loan): number {
   return loan.totalDue - loan.principal;

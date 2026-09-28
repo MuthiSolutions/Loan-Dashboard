@@ -1,5 +1,5 @@
 import { getActiveLoans, getCashPosition, getPipelineEntries, getRepaidLoans } from "@/lib/repo";
-import { formatFCFA, loansSortedByUrgency, portfolioTotals } from "@/lib/loans";
+import { formatFCFA, loanNumbersByBorrower, loansSortedByUrgency, portfolioTotals } from "@/lib/loans";
 import { CashPanel } from "@/components/CashPanel";
 import { ClosedLoanCard } from "@/components/ClosedLoanCard";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
@@ -23,6 +23,9 @@ export default async function DashboardPage() {
 
   const loans = loansSortedByUrgency(activeLoans, asOf);
   const totals = portfolioTotals(activeLoans, asOf);
+  // Numbering needs every loan a borrower has ever had, active and repaid, or their
+  // second loan would show as their first.
+  const loanNumbers = loanNumbersByBorrower([...activeLoans, ...repaidLoans]);
   const totalDeployable = cashPosition.inBank + cashPosition.heldByFounder;
 
   const attentionLabel =
@@ -90,7 +93,7 @@ export default async function DashboardPage() {
           </div>
           <div className="space-y-4">
             {loans.map((loan) => (
-              <LoanCard key={loan.id} loan={loan} />
+              <LoanCard key={loan.id} loan={loan} loanNumber={loanNumbers.get(loan.id)?.number} />
             ))}
           </div>
         </section>
@@ -110,7 +113,7 @@ export default async function DashboardPage() {
           >
             <div className="space-y-4">
               {repaidLoans.map((loan) => (
-                <ClosedLoanCard key={loan.id} loan={loan} />
+                <ClosedLoanCard key={loan.id} loan={loan} loanNumber={loanNumbers.get(loan.id)?.number} />
               ))}
             </div>
           </CollapsibleSection>

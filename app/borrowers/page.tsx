@@ -1,5 +1,5 @@
 import { getAllBorrowerLoans, getAllPipelineEntriesEverConsidered } from "@/lib/repo";
-import { computeAmountDue, daysLate, getLoanState, weeksLate } from "@/lib/loans";
+import { computeAmountDue, daysLate, getLoanState, loanNumbersByBorrower, weeksLate } from "@/lib/loans";
 import { computeCreditScore, type ScoringInput } from "@/lib/creditScore";
 import { BorrowerCard } from "@/components/BorrowerCard";
 import { Header } from "@/components/Header";
@@ -30,6 +30,11 @@ export default async function BorrowersPage() {
     if (!firstLoanIdByBorrower.has(loan.borrower)) firstLoanIdByBorrower.set(loan.borrower, loan.id);
   }
 
+  // Numbering runs over every loan a borrower has ever had, so Marie Andréa's renewable
+  // cycle reads as her second loan instead of another first. Pipeline entries get no number:
+  // nothing has been disbursed, so they are not yet part of anyone's sequence.
+  const loanNumbers = loanNumbersByBorrower(loans);
+
   const activeEntries = loans.map((loan) => {
     const repaid = loan.repaidOn !== undefined;
     // For a repaid loan, score against what was actually collected, not a formula that would
@@ -55,6 +60,7 @@ export default async function BorrowersPage() {
       amount: amountDue,
       score: computeCreditScore(input),
       repaymentHistory: loan.repaymentHistory,
+      loanNumber: loanNumbers.get(loan.id)?.number,
     };
   });
 
