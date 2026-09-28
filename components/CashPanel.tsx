@@ -1,5 +1,5 @@
 import type { CashMovement, CashPosition } from "@/lib/types";
-import { formatDate, formatFCFA } from "@/lib/loans";
+import { WORKING_CAPITAL_DEPOSITED, formatDate, formatFCFA } from "@/lib/loans";
 
 const ACCOUNT_LABEL = { bank: "Bank", founder: "Founder" };
 
@@ -39,9 +39,15 @@ function toDisplayMovements(movements: CashMovement[]): DisplayMovement[] {
   return result;
 }
 
-export function CashPanel({ cash }: { cash: CashPosition }) {
+/**
+ * `deployedPrincipal` is own money currently out with borrowers, so cash on hand plus deployed
+ * is everything the working capital has become. Anything above the deposit is retained profit.
+ */
+export function CashPanel({ cash, deployedPrincipal }: { cash: CashPosition; deployedPrincipal: number }) {
   const total = cash.inBank + cash.heldByFounder;
   const displayMovements = toDisplayMovements(cash.movements);
+  const capitalAccountedFor = total + deployedPrincipal;
+  const aboveDeposit = capitalAccountedFor - WORKING_CAPITAL_DEPOSITED;
 
   return (
     <div className="rounded-2xl border border-[var(--sapphire-line)] bg-[var(--sapphire)] p-6 text-[var(--paper)] shadow-sm">
@@ -49,8 +55,11 @@ export function CashPanel({ cash }: { cash: CashPosition }) {
         <p className="eyebrow text-[11px] text-[var(--azure-soft)]">Cash position</p>
         <p className="font-display text-3xl font-semibold tabular">{formatFCFA(total)}</p>
       </div>
+      <p className="mt-1 text-xs text-[var(--mist-soft)]">
+        Muthi deposited {formatFCFA(WORKING_CAPITAL_DEPOSITED)} for working capital
+      </p>
 
-      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-xl bg-white/5 p-4">
           <p className="text-xs tracking-wide text-[var(--mist)] uppercase">In bank</p>
           <p className="mt-1 text-xl font-semibold tabular">{formatFCFA(cash.inBank)}</p>
@@ -61,6 +70,25 @@ export function CashPanel({ cash }: { cash: CashPosition }) {
           <p className="mt-1 text-xl font-semibold tabular">{formatFCFA(cash.heldByFounder)}</p>
           <p className="mt-1 text-xs text-[var(--mist-soft)]">Not yet deposited to the bank</p>
         </div>
+        <div className="rounded-xl bg-white/5 p-4">
+          <p className="text-xs tracking-wide text-[var(--mist)] uppercase">Out with borrowers</p>
+          <p className="mt-1 text-xl font-semibold tabular">{formatFCFA(deployedPrincipal)}</p>
+          <p className="mt-1 text-xs text-[var(--mist-soft)]">Principal deployed, not yet back</p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 rounded-xl bg-white/5 px-4 py-3 text-xs">
+        <span className="text-[var(--mist-soft)]">
+          On hand plus deployed{" "}
+          <span className="tabular font-medium text-[var(--paper)]">{formatFCFA(capitalAccountedFor)}</span>
+        </span>
+        <span className="text-[var(--mist-soft)]">
+          Against the {formatFCFA(WORKING_CAPITAL_DEPOSITED)} deposited{" "}
+          <span className={`tabular font-medium ${aboveDeposit >= 0 ? "text-[var(--ok)]" : "text-[var(--mist)]"}`}>
+            {aboveDeposit >= 0 ? "+" : ""}
+            {formatFCFA(aboveDeposit)}
+          </span>
+        </span>
       </div>
 
       {displayMovements.length > 0 && (

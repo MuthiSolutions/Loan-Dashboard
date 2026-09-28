@@ -61,6 +61,17 @@ export function getLoanState(loan: Loan, asOf: Date = new Date()): LoanState {
   return "on-track";
 }
 
+/**
+ * Own money the founders deposited as working capital, agreed and frozen at 28 September 2026.
+ * See CLAUDE.md, "Capital: new money versus recycled money".
+ *
+ * This is deliberately NOT gross principal deployed, which was 6,450,000 on the same date.
+ * Marie Andréa Koizan's renewable cycle 1 re-lent the 300,000 she had just repaid, so it is
+ * recycled money rather than new money the founders had to find. Raise this constant only when
+ * they actually put fresh cash in, and record the date and amount in the commit message.
+ */
+export const WORKING_CAPITAL_DEPOSITED = 6_150_000;
+
 /** What was contracted to be earned on this deal — total due at maturity minus principal disbursed, before any late penalty. */
 export function contractedProfit(loan: Loan): number {
   return loan.totalDue - loan.principal;

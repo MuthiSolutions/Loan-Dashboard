@@ -44,7 +44,7 @@ export default async function DashboardPage() {
       <Header asOf={asOf} current="/" />
 
       <main className="mx-auto max-w-6xl space-y-8 px-6 py-8">
-        <CashPanel cash={cashPosition} />
+        <CashPanel cash={cashPosition} deployedPrincipal={totals.netPrincipalAtRisk} />
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <SummaryCard
