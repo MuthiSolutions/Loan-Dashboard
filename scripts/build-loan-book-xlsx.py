@@ -329,7 +329,12 @@ def build(data_path, out_path, as_of):
         put(1, n, align="center")
         put(2, loan["borrower"] + (f"  ({', '.join(tags)})" if tags else ""))
         put(3, loan["purpose"])
-        put(4, i(loan["principal"]), MONEY, BLUE)
+        is_recyc = loan["id"] in recycled_ids
+        lent_cell = put(4, i(loan["principal"]), MONEY, FAINT if is_recyc else BLUE)
+        if is_recyc:
+            lent_cell.comment = Comment(
+                "Re-lent: the same capital this borrower already repaid on an earlier cycle. "
+                "Counted once in the Lent total, not added again.", "Muthi")
         put(5, i(loan["total_due"]), MONEY, BLUE)
         if repaid:
             put(6, "Repaid", color=OK_FG, bold=True, align="center")
@@ -378,7 +383,14 @@ def build(data_path, out_path, as_of):
         cell.number_format = MONEY
         cell.font = f(10, bold=True)
         cell.border = OVER
-    r += 2
+    r += 1
+    if recycled_ids:
+        cap = ws.cell(row=r, column=2,
+                      value="Lent counts each re-lent cycle once: the greyed, 're-lent'-tagged figures are the "
+                            "same capital going back out (e.g. Marie Andréa's facility), so the total is not double-counted.")
+        cap.font = f(9, italic=True, color=MUTED)
+        r += 1
+    r += 1
 
     # ---- recap
     r = section(ws, r, "PORTFOLIO AT A GLANCE (whole book, not affected by filtering)", len(headers))
@@ -465,16 +477,21 @@ def build(data_path, out_path, as_of):
 
         # ---- who they are
         br = section(bs, br, "BORROWER", 7)
-        profile = [("Contact", loans[0].get("contact")), ("Profession", loans[0].get("profession")),
-                   ("Employer", loans[0].get("employer"))]
+        # Only show what we actually hold — a field that is not on file is left out entirely rather
+        # than printed as "Not on file".
+        profile = []
+        if loans[0].get("contact"):
+            profile.append(("Contact", loans[0]["contact"], None))
+        if loans[0].get("profession"):
+            profile.append(("Profession", loans[0]["profession"], None))
+        if loans[0].get("employer"):
+            profile.append(("Employer", loans[0]["employer"], None))
         if loans[0].get("monthly_income"):
-            profile.append(("Monthly income", i(loans[0]["monthly_income"])))
-        profile += [("Related party", "Yes, a Muthi associate" if loans[0].get("related_party") else "No"),
-                    ("Loans with Muthi", len(loans))]
-        for label, value in profile:
-            fmt = MONEY if label == "Monthly income" else None
-            br = label_value(bs, br, label, value if value is not None else "Not on file", fmt,
-                             BLUE if value is not None else FAINT)
+            profile.append(("Monthly income", i(loans[0]["monthly_income"]), MONEY))
+        profile.append(("Related party", "Yes, a Muthi associate" if loans[0].get("related_party") else "No", None))
+        profile.append(("Loans with Muthi", len(loans), None))
+        for label, value, fmt in profile:
+            br = label_value(bs, br, label, value, fmt, BLUE)
         br += 1
 
         # ---- position, one row per loan, pulled from the front sheet so the two never disagree
@@ -563,7 +580,8 @@ def build(data_path, out_path, as_of):
             name = entry.get("borrower") or entry.get("label") or entry["id"]
             pr = section(ps, pr, name.upper(), 2)
             pr = label_value(ps, pr, "Status", entry.get("status") or "Pending", color=BLACK)
-            pr = label_value(ps, pr, "Contact", entry.get("contact") or "Not on file")
+            if entry.get("contact"):
+                pr = label_value(ps, pr, "Contact", entry["contact"])
             principal = i(entry.get("principal")) or 0
             fees_total = sum(int(fee["amount"]) for fee in (entry.get("fees") or []))
             is_term = bool(entry.get("term_months"))
