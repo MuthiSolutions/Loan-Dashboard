@@ -6,7 +6,7 @@ import {
   formatFCFA,
   getLoanState,
   grossAmountDue,
-  periodsLate,
+  penaltyBreakdown,
 } from "@/lib/loans";
 import { DocumentLinks } from "./DocumentLinks";
 import { ProfitBreakdown } from "./ProfitBreakdown";
@@ -17,8 +17,19 @@ export function LoanCard({ loan, loanNumber }: { loan: Loan; loanNumber?: number
   const days = daysUntilDue(loan);
   const grossNow = grossAmountDue(loan);
   const amountNow = computeAmountDue(loan);
-  const periods = periodsLate(loan);
-  const periodUnit = loan.latePenaltyPeriod === "day" ? "day" : "wk";
+  const penalty = penaltyBreakdown(loan);
+
+  const unitLabel = (n: number, period: "day" | "week") =>
+    `${n} ${period === "day" ? "day" : "wk"}${n > 1 ? "s" : ""}`;
+  const penaltyHint =
+    loan.manualAmountOverride !== undefined
+      ? "manually pinned figure"
+      : penalty.total <= 0
+      ? undefined
+      : penalty.switched
+      ? `incl. ${unitLabel(penalty.phase1Units, loan.latePenaltyPeriod)} + ` +
+        `${unitLabel(penalty.phase2Units, loan.latePenaltyPeriodAfter ?? "day")} × 1% late penalty`
+      : `incl. ${unitLabel(penalty.total, loan.latePenaltyPeriod)} × 1% late penalty`;
 
   const amountTone =
     state === "overdue" ? "text-[var(--danger)]" : state === "due-soon" ? "text-[var(--amber)]" : "text-[var(--ink)]";
@@ -52,13 +63,7 @@ export function LoanCard({ loan, loanNumber }: { loan: Loan; loanNumber?: number
           label="Currently owed"
           value={formatFCFA(amountNow)}
           valueClassName={amountTone}
-          hint={
-            loan.manualAmountOverride !== undefined
-              ? "manually pinned figure"
-              : periods > 0
-              ? `incl. ${periods} ${periodUnit}${periods > 1 ? "s" : ""} × 1% late penalty`
-              : undefined
-          }
+          hint={penaltyHint}
         />
       </div>
 

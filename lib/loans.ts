@@ -38,10 +38,55 @@ export function periodsLate(loan: Loan, asOf: Date = new Date()): number {
   return loan.latePenaltyPeriod === "day" ? daysLate(loan, asOf) : weeksLate(loan, asOf);
 }
 
-/** Formula amount: totalDue plus the late penalty accrued per this loan's own period (day or week) since the due date. */
+/** Penalty periods started in [start, end) at a given cadence: whole days, or whole started weeks. Zero if end is not after start. */
+function unitsBetween(start: Date, end: Date, period: "day" | "week"): number {
+  const ms = end.getTime() - start.getTime();
+  if (ms <= 0) return 0;
+  const days = Math.round(ms / MS_PER_DAY);
+  return period === "day" ? days : Math.ceil(days / 7);
+}
+
+export interface PenaltyBreakdown {
+  /** Total rate-units to multiply by latePenaltyRatePerWeek. */
+  total: number;
+  /** Units accrued before the cadence switch (at latePenaltyPeriod). */
+  phase1Units: number;
+  /** Units accrued after the cadence switch (at latePenaltyPeriodAfter). */
+  phase2Units: number;
+  /** True when a mid-life cadence switch applies to this loan. */
+  switched: boolean;
+}
+
+/**
+ * How many rate-units of late penalty have accrued, honouring an optional mid-life cadence switch.
+ *
+ * Without a switch this is just periodsLate(). With one, the first phase (due date to the switch
+ * date) accrues at latePenaltyPeriod and the second phase (switch date to asOf) at
+ * latePenaltyPeriodAfter. Jean Philippe is the first such loan: one weekly grace week locked at
+ * 1 unit, then 1% per day from 2 October — so a flat flip to daily would wrongly charge the grace
+ * week at seven daily units instead of one weekly unit.
+ */
+export function penaltyBreakdown(loan: Loan, asOf: Date = new Date()): PenaltyBreakdown {
+  const due = parseDate(loan.dueOn);
+  const today = startOfDay(asOf);
+  if (today <= due) return { total: 0, phase1Units: 0, phase2Units: 0, switched: false };
+
+  if (!loan.latePenaltySwitchOn || !loan.latePenaltyPeriodAfter) {
+    const total = periodsLate(loan, asOf);
+    return { total, phase1Units: total, phase2Units: 0, switched: false };
+  }
+
+  const switchOn = parseDate(loan.latePenaltySwitchOn);
+  const phase1End = today < switchOn ? today : switchOn;
+  const phase1Units = unitsBetween(due, phase1End, loan.latePenaltyPeriod);
+  const phase2Units = today > switchOn ? unitsBetween(switchOn, today, loan.latePenaltyPeriodAfter) : 0;
+  return { total: phase1Units + phase2Units, phase1Units, phase2Units, switched: true };
+}
+
+/** Formula amount: totalDue plus the late penalty accrued per this loan's own cadence (including any mid-life switch) since the due date. */
 export function formulaAmountDue(loan: Loan, asOf: Date = new Date()): number {
-  const periods = periodsLate(loan, asOf);
-  return Math.round(loan.totalDue * (1 + loan.latePenaltyRatePerWeek * periods));
+  const units = penaltyBreakdown(loan, asOf).total;
+  return Math.round(loan.totalDue * (1 + loan.latePenaltyRatePerWeek * units));
 }
 
 /** Full value of the deal as of this date — manual pin or formula — before netting out any payments already received. This is what profit is measured against, so a partial payment doesn't make the deal look smaller than it is. */

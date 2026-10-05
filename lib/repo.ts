@@ -25,6 +25,8 @@ interface LoanRow {
   due_on: string | null;
   late_penalty_rate_per_week: string;
   late_penalty_period: "day" | "week";
+  late_penalty_switch_on: string | null;
+  late_penalty_period_after: "day" | "week" | null;
   contract_ref: string | null;
   related_party: boolean;
   manual_amount_override: string | null;
@@ -73,6 +75,8 @@ function rowToLoan(row: LoanRow): Loan {
     dueOn: row.due_on!,
     latePenaltyRatePerWeek: Number(row.late_penalty_rate_per_week),
     latePenaltyPeriod: row.late_penalty_period,
+    latePenaltySwitchOn: row.late_penalty_switch_on ?? undefined,
+    latePenaltyPeriodAfter: row.late_penalty_period_after ?? undefined,
     contractRef: row.contract_ref ?? "",
     relatedParty: row.related_party || undefined,
     manualAmountOverride: n(row.manual_amount_override),

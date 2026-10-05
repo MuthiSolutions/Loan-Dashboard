@@ -44,6 +44,15 @@ export interface Loan extends BorrowerProfile {
   latePenaltyRatePerWeek: number; // e.g. 0.01 = 1% per period started, on totalDue
   /** Which period latePenaltyRatePerWeek compounds over. Most loans are "week" per their signed convention; a few are "day" by separate agreement with the borrower. */
   latePenaltyPeriod: "day" | "week";
+  /**
+   * Optional mid-life change of penalty cadence. When set, the penalty accrues at latePenaltyPeriod
+   * from the due date up to this date, then at latePenaltyPeriodAfter from this date onward. Used
+   * when a borrower is granted a grace window at one cadence and then moved to another — e.g. one
+   * weekly grace week, then 1% per day. The rate (latePenaltyRatePerWeek) is unchanged across both
+   * phases; only the cadence changes.
+   */
+  latePenaltySwitchOn?: string; // ISO date
+  latePenaltyPeriodAfter?: "day" | "week";
   contractRef: string;
   /** Loan to a Muthi associate/insider rather than an outside client — flagged for governance visibility. */
   relatedParty?: boolean;

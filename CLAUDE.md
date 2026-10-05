@@ -79,6 +79,19 @@ the rate was applied to so the arithmetic stays checkable if a loan is later res
 - The fee is computed on **realised** profit, which includes late penalties collected. Do not
   use the contracted profit.
 
+## Late penalty
+
+The standard penalty is 1% per started week on the **total due** (not the principal), simple, never
+compounded. A few loans are 1% per day by separate agreement with the borrower
+(`late_penalty_period = 'day'`).
+
+A loan's cadence can change mid-life. `late_penalty_switch_on` + `late_penalty_period_after` express
+"accrue at the original cadence up to this date, then at the new cadence after it," same 1% rate
+throughout. Jean Philippe (`ane-jean-philippe`) is the first: one weekly grace week locked at 2,000,
+then 1% per day from 2 October 2026. Do not model a cadence change by flipping `late_penalty_period`
+outright — that would charge the grace week at the daily rate and overstate the debt. `penaltyBreakdown()`
+in `lib/loans.ts` is the single source of truth for this and the xlsx builder mirrors it.
+
 ## Where things live
 
 - `lib/schema.sql` — canonical DB schema (source of truth; `scripts/migrate.mjs` is a

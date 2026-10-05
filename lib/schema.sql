@@ -13,6 +13,13 @@ CREATE TABLE IF NOT EXISTS loans (
   -- Which period the rate above compounds over. Defaults to "week" to match the standard
   -- signed convention wording; a loan is only "day" by separate agreement with the borrower.
   late_penalty_period TEXT NOT NULL DEFAULT 'week' CHECK (late_penalty_period IN ('day', 'week')),
+  -- Optional mid-life change of penalty cadence. When late_penalty_switch_on is set, the penalty
+  -- accrues at late_penalty_period from the due date up to that date, then at
+  -- late_penalty_period_after from that date onward. The rate is unchanged across both phases;
+  -- only the cadence changes. Used when a borrower is granted a grace window at one cadence and
+  -- then moved to another (e.g. one weekly grace week, then 1% per day).
+  late_penalty_switch_on DATE,
+  late_penalty_period_after TEXT CHECK (late_penalty_period_after IN ('day', 'week')),
   contract_ref TEXT,
   related_party BOOLEAN NOT NULL DEFAULT FALSE,
   manual_amount_override BIGINT,
