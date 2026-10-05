@@ -168,6 +168,24 @@ export function computeProfit(loan: Loan, asOf: Date = new Date()): number {
   return grossAmountDue(loan, asOf) - loan.principal;
 }
 
+/**
+ * A loan on the 12-month revolving facility: its contract reference or purpose names the renewable
+ * line. Mirrors is_revolving_loan() in scripts/build-loan-book-xlsx.py so the dashboard's Loan Book
+ * view and the exported workbook agree on who is enrolled.
+ */
+export function isRevolvingLoan(loan: Pick<Loan, "contractRef" | "purpose">): boolean {
+  const cr = (loan.contractRef ?? "").toLowerCase();
+  const pu = (loan.purpose ?? "").toLowerCase();
+  return cr.includes("renouvelable") || cr.includes("revolving") || pu.includes("renewable") || pu.includes("revolving");
+}
+
+/** Borrowers enrolled on the revolving facility — enrolment is borrower-level: if any one of a borrower's loans is on the line, they are on it. */
+export function revolvingBorrowers(loans: Loan[]): Set<string> {
+  const enrolled = new Set<string>();
+  for (const loan of loans) if (isRevolvingLoan(loan)) enrolled.add(loan.borrower);
+  return enrolled;
+}
+
 export function portfolioTotals(loans: Loan[], asOf: Date = new Date()) {
   const totalPrincipal = loans.reduce((sum, l) => sum + l.principal, 0);
   const totalContracted = loans.reduce((sum, l) => sum + l.totalDue, 0);

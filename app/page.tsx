@@ -1,135 +1,122 @@
 import { getActiveLoans, getCashPosition, getCommissions, getPipelineEntries, getRepaidLoans } from "@/lib/repo";
-import { formatFCFA, loanNumbersByBorrower, loansSortedByUrgency, portfolioTotals } from "@/lib/loans";
-import { CashPanel } from "@/components/CashPanel";
-import { ClosedLoanCard } from "@/components/ClosedLoanCard";
-import { CollapsibleSection } from "@/components/CollapsibleSection";
-import { CommissionsPanel } from "@/components/CommissionsPanel";
+import { formatFCFA, portfolioTotals } from "@/lib/loans";
 import { Header } from "@/components/Header";
-import { LoanCard } from "@/components/LoanCard";
-import { PipelinePanel } from "@/components/PipelinePanel";
-import { SummaryCard } from "@/components/SummaryCard";
 
-// Penalties accrue by the day and the loan book is DB-backed, so this page
-// must be computed per-request, not cached at build time.
+// Live figures on the cards (cash, outstanding, pending) must be computed per request.
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+export default async function HomePage() {
   const asOf = new Date();
-  const [activeLoans, pipeline, cashPosition, repaidLoans, commissions] = await Promise.all([
+  const [activeLoans, repaidLoans, pipeline, cashPosition, commissions] = await Promise.all([
     getActiveLoans(),
+    getRepaidLoans(),
     getPipelineEntries(),
     getCashPosition(),
-    getRepaidLoans(),
     getCommissions(),
   ]);
 
-  const loans = loansSortedByUrgency(activeLoans, asOf);
   const totals = portfolioTotals(activeLoans, asOf);
-  // Numbering needs every loan a borrower has ever had, active and repaid, or their
-  // second loan would show as their first.
-  const loanNumbers = loanNumbersByBorrower([...activeLoans, ...repaidLoans]);
-  const totalDeployable = cashPosition.inBank + cashPosition.heldByFounder;
+  const totalCash = cashPosition.inBank + cashPosition.heldByFounder;
+  const borrowerCount = new Set([...activeLoans, ...repaidLoans].map((l) => l.borrower)).size;
+  const payable = commissions.filter((c) => c.status === "payable").reduce((s, c) => s + c.amount, 0);
+  const toRelease = pipeline.reduce((s, e) => s + e.principal, 0);
 
-  // A commission names a loan id; the panel shows who the loan was to.
-  const loansById = new Map([...activeLoans, ...repaidLoans].map((l) => [l.id, l]));
-  const commissionRows = commissions.map((c) => ({
-    ...c,
-    borrower: loansById.get(c.loanId)?.borrower ?? c.loanId,
-    loanNumber: loanNumbers.get(c.loanId)?.number,
-  }));
-
-  const attentionLabel =
-    totals.overdueCount > 0
-      ? `${totals.overdueCount} overdue`
-      : totals.dueSoonCount > 0
-      ? `${totals.dueSoonCount} due within 7 days`
-      : "None";
-
-  const attentionSub =
-    totals.overdueCount > 0
-      ? `${totals.overdueCount} loan${totals.overdueCount > 1 ? "s" : ""} past due date`
-      : totals.dueSoonCount > 0
-      ? "Due within the next 7 days"
-      : "All loans on track";
+  const views = [
+    {
+      href: "/dashboard",
+      label: "Dashboard",
+      blurb: "Cash position, portfolio health and what needs attention.",
+      figure: formatFCFA(totals.totalCurrentlyOwed),
+      figureLabel: "outstanding",
+      tone: totals.overdueCount > 0 ? "danger" : "azure",
+    },
+    {
+      href: "/loan-book",
+      label: "Loan Book",
+      blurb: "Every loan on one line — repaid or not, and who is on the revolving facility.",
+      figure: `${totals.activeCount}`,
+      figureLabel: "active loans",
+      tone: "default",
+    },
+    {
+      href: "/borrowers",
+      label: "Borrowers",
+      blurb: "Credit scores and the plain-language rubric behind each grade.",
+      figure: `${borrowerCount}`,
+      figureLabel: "borrowers",
+      tone: "default",
+    },
+    {
+      href: "/commissions",
+      label: "Analyst Commissions",
+      blurb: "20% of profit to Louis and Emmanuel — paid and still to collect.",
+      figure: formatFCFA(payable),
+      figureLabel: "still to collect",
+      tone: payable > 0 ? "amber" : "ok",
+    },
+    {
+      href: "/ledger",
+      label: "Ledger",
+      blurb: "Every cash movement in debit/credit form, per account.",
+      figure: formatFCFA(totalCash),
+      figureLabel: "total cash",
+      tone: "default",
+    },
+  ] as const;
 
   return (
     <div className="min-h-screen bg-[var(--cream)]">
       <Header asOf={asOf} current="/" />
 
-      <main className="mx-auto max-w-6xl space-y-8 px-6 py-8">
-        <CashPanel cash={cashPosition} deployedPrincipal={totals.netPrincipalAtRisk} />
+      <main className="mx-auto max-w-6xl space-y-8 px-6 py-10">
+        <div>
+          <p className="eyebrow text-[11px]">Muthi Solutions — internal</p>
+          <h2 className="font-display text-3xl font-semibold text-[var(--ink)]">What do you want to see?</h2>
+        </div>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          <SummaryCard
-            label="Cash on hand"
-            value={formatFCFA(totalDeployable)}
-            sub={`${formatFCFA(cashPosition.inBank)} bank + ${formatFCFA(cashPosition.heldByFounder)} with founder`}
-            tone="azure"
-          />
-          <SummaryCard
-            label="Principal at risk"
-            value={formatFCFA(totals.netPrincipalAtRisk)}
-            sub={`${totals.activeCount} active loans, net of principal already recovered`}
-          />
-          <SummaryCard
-            label="Total outstanding"
-            value={formatFCFA(totals.totalCurrentlyOwed)}
-            sub="Principal + fees + penalties, net of payments received"
-            tone={totals.overdueCount > 0 ? "danger" : "default"}
-          />
-          <SummaryCard
-            label="Expected profit"
-            value={formatFCFA(totals.totalProfit)}
-            sub="Already counted inside Total outstanding"
-            tone="ok"
-          />
-          <SummaryCard
-            label="Needs attention"
-            value={attentionLabel}
-            sub={attentionSub}
-            tone={totals.overdueCount > 0 ? "danger" : totals.dueSoonCount > 0 ? "default" : "ok"}
-          />
-        </section>
-
-        <section>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="eyebrow text-[11px]">Loan book</p>
-            <a
-              href="/loans/new"
-              className="rounded-full bg-[var(--azure-deep)] px-4 py-1.5 text-xs font-semibold text-[var(--paper)] transition hover:opacity-90"
-            >
-              + Add a deal
-            </a>
-          </div>
-          <div className="space-y-4">
-            {loans.map((loan) => (
-              <LoanCard key={loan.id} loan={loan} loanNumber={loanNumbers.get(loan.id)?.number} />
-            ))}
-          </div>
-        </section>
-
-        <CommissionsPanel commissions={commissionRows} />
-
-        <CollapsibleSection title={<p className="eyebrow text-[11px]">Pipeline</p>} defaultOpen>
-          <PipelinePanel loans={pipeline} />
-        </CollapsibleSection>
-
-        {repaidLoans.length > 0 && (
-          <CollapsibleSection
-            title={
-              <p className="eyebrow text-[11px]">
-                Closed loans <span className="text-[var(--slate-soft)] normal-case tracking-normal">({repaidLoans.length})</span>
-              </p>
-            }
-            defaultOpen={false}
+        {pipeline.length > 0 && (
+          <a
+            href="/dashboard"
+            className="block rounded-2xl border border-[#e6cf93] bg-[#fbf3de] p-5 transition hover:brightness-[0.99]"
           >
-            <div className="space-y-4">
-              {repaidLoans.map((loan) => (
-                <ClosedLoanCard key={loan.id} loan={loan} loanNumber={loanNumbers.get(loan.id)?.number} />
-              ))}
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="text-sm font-semibold text-[var(--amber)]">
+                {pipeline.length} pending disbursement{pipeline.length > 1 ? "s" : ""} — up to {formatFCFA(toRelease)} to release
+              </p>
+              <span className="text-xs font-medium text-[var(--amber)]">View on dashboard →</span>
             </div>
-          </CollapsibleSection>
+            <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-[var(--slate)]">
+              {pipeline.map((e) => (
+                <li key={e.id}>
+                  <span className="font-medium text-[var(--ink)]">{e.kind === "term" ? e.label : e.borrower}</span>{" "}
+                  — {formatFCFA(e.principal)} · {e.status}
+                </li>
+              ))}
+            </ul>
+          </a>
         )}
+
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {views.map((v) => (
+            <a
+              key={v.href}
+              href={v.href}
+              className="group flex flex-col justify-between rounded-2xl border border-[var(--sapphire-line)] bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <div>
+                <p className="font-display text-xl font-semibold text-[var(--ink)]">{v.label}</p>
+                <p className="mt-1.5 text-sm text-[var(--slate-soft)]">{v.blurb}</p>
+              </div>
+              <div className="mt-6 flex items-end justify-between">
+                <div>
+                  <p className={`font-display text-2xl font-semibold tabular ${toneClass(v.tone)}`}>{v.figure}</p>
+                  <p className="text-[11px] tracking-wide text-[var(--slate-soft)] uppercase">{v.figureLabel}</p>
+                </div>
+                <span className="text-[var(--azure-deep)] transition group-hover:translate-x-0.5">→</span>
+              </div>
+            </a>
+          ))}
+        </section>
 
         <footer className="border-t border-[var(--cream-2)] pt-6 pb-4 text-xs text-[var(--slate-soft)]">
           Internal document — confidential loan terms and borrower information. Do not share outside Muthi Solutions.
@@ -137,4 +124,19 @@ export default async function DashboardPage() {
       </main>
     </div>
   );
+}
+
+function toneClass(tone: string): string {
+  switch (tone) {
+    case "danger":
+      return "text-[var(--danger)]";
+    case "amber":
+      return "text-[var(--amber)]";
+    case "ok":
+      return "text-[var(--ok)]";
+    case "azure":
+      return "text-[var(--azure-deep)]";
+    default:
+      return "text-[var(--ink)]";
+  }
 }

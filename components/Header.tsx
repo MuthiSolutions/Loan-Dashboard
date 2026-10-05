@@ -2,9 +2,10 @@ import { Logo } from "./Logo";
 import { LogoutButton } from "./LogoutButton";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Dashboard" },
-  { href: "/deadlines", label: "Deadlines" },
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/loan-book", label: "Loan Book" },
   { href: "/borrowers", label: "Borrowers" },
+  { href: "/commissions", label: "Commissions" },
   { href: "/ledger", label: "Ledger" },
 ];
 
@@ -19,15 +20,15 @@ export function Header({ asOf, current = "/" }: { asOf: Date; current?: string }
   return (
     <header className="bg-[var(--sapphire)]">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-6">
-        <div className="flex items-center gap-3">
+        <a href="/" className="flex items-center gap-3 transition hover:opacity-90" title="Home">
           <Logo className="h-9 w-9" />
           <div>
             <p className="eyebrow text-[11px] text-[var(--azure-soft)]">Muthi Solutions</p>
             <h1 className="font-display text-2xl font-semibold text-[var(--paper)]">Loan Portfolio</h1>
           </div>
-        </div>
+        </a>
 
-        <nav className="flex items-center gap-1">
+        <nav className="flex flex-wrap items-center gap-1">
           {NAV_ITEMS.map((item) => (
             <a
               key={item.href}

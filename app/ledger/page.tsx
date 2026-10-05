@@ -24,7 +24,12 @@ export default async function LedgerPage() {
           <p className="mt-2 max-w-2xl text-sm text-[var(--slate-soft)]">
             Every cash movement Muthi has recorded, one account at a time, in standard debit/credit form. For an asset
             account like these, a debit is money coming in and a credit is money going out — the balance at the
-            bottom of each table is a running total, not a hand-entered figure.
+            bottom of each table is a running total, not a hand-entered figure. The loan book itself — every loan,
+            its status and what is owed — has its own{" "}
+            <a href="/loan-book" className="font-medium text-[var(--azure-deep)] hover:underline">
+              Loan Book
+            </a>{" "}
+            view, kept separate so each reads clean.
           </p>
         </div>
 

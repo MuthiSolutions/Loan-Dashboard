@@ -105,3 +105,22 @@ debt. `penaltyBreakdown()` gives the per-phase units and `formulaAmountDue()` ap
 - `lib/loans.ts` — pure computation (amounts due, penalties, portfolio totals).
 - `lib/creditScore.ts` — the transparent, point-based credit scoring model.
 - `proxy.ts` — the shared-password login gate (fails closed if `DASHBOARD_PASSWORD` unset).
+
+## App structure (routes)
+
+The dashboard opens on a **hub** at `/` where you choose a view — there is no longer one catch-all page.
+
+- `/` — hub: a card per view, plus a pending-disbursements strip.
+- `/dashboard` — cash position, portfolio KPIs, needs-attention, and the Pending disbursements panel.
+- `/loan-book` — the status-first loan book table (one line per loan, mirroring the exported workbook's
+  front sheet via `isRevolvingLoan`/`revolvingBorrowers` in `lib/loans.ts`), with full per-loan cards and
+  closed loans below.
+- `/borrowers` — credit scores and the scoring rubric.
+- `/commissions` — analyst commissions.
+- `/ledger` — cash movements in debit/credit form. The loan book is deliberately its own view, not folded
+  in here.
+- `/loans/new` — add a deal.
+
+Pre-disbursement deals are `kind IN ('pipeline_term','pipeline_pending')` and surface under Pending
+disbursements until funded; a `pipeline_pending` row with no `total_due` is a request whose terms are not
+yet set. There is no Deadlines page — it was removed.

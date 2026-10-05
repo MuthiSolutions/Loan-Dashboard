@@ -100,7 +100,7 @@ export default function NewLoanPage() {
     setLoading(false);
 
     if (res.ok) {
-      router.push("/");
+      router.push("/loan-book");
       router.refresh();
     } else {
       const data = await res.json().catch(() => ({}));
@@ -124,8 +124,8 @@ export default function NewLoanPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-8">
-        <a href="/" className="text-sm text-[var(--azure-deep)] hover:underline">
-          ← Back to dashboard
+        <a href="/loan-book" className="text-sm text-[var(--azure-deep)] hover:underline">
+          ← Back to loan book
         </a>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-6 rounded-2xl border border-[var(--sapphire-line)] bg-white p-6 shadow-sm">
