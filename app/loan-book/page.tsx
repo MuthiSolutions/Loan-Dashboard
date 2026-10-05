@@ -1,5 +1,5 @@
 import { getActiveLoans, getRepaidLoans } from "@/lib/repo";
-import { loanNumbersByBorrower, loansSortedByUrgency } from "@/lib/loans";
+import { loanNumbersByBorrower, loansSortedByUrgency, recycledLoanIds } from "@/lib/loans";
 import { ClosedLoanCard } from "@/components/ClosedLoanCard";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { Header } from "@/components/Header";
@@ -16,6 +16,8 @@ export default async function LoanBookPage() {
   // Numbering needs every loan a borrower has ever had, active and repaid, or their
   // second loan would show as their first.
   const loanNumbers = loanNumbersByBorrower([...activeLoans, ...repaidLoans]);
+  // Which active loans re-lend capital already repaid — needs every loan, repaid included, to see the earlier cycle.
+  const recycledIds = recycledLoanIds([...activeLoans, ...repaidLoans]);
 
   return (
     <div className="min-h-screen bg-[var(--cream)]">
@@ -35,7 +37,7 @@ export default async function LoanBookPage() {
           </a>
         </div>
 
-        <LoanBookTable loans={loans} asOf={asOf} />
+        <LoanBookTable loans={loans} asOf={asOf} recycledIds={recycledIds} />
 
         <CollapsibleSection title={<p className="eyebrow text-[11px]">Full detail, loan by loan</p>} defaultOpen={false}>
           <div className="space-y-4">

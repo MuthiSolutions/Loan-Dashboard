@@ -13,8 +13,18 @@ import {
  * whether the borrower is on the 12-month revolving facility). Figures are live: penalties and
  * status re-accrue against `asOf`.
  */
-export function LoanBookTable({ loans, asOf = new Date() }: { loans: Loan[]; asOf?: Date }) {
+export function LoanBookTable({
+  loans,
+  asOf = new Date(),
+  recycledIds = new Set<string>(),
+}: {
+  loans: Loan[];
+  asOf?: Date;
+  /** Ids of re-lent cycles (same capital a borrower already repaid) — flagged so their principal isn't read as new money. */
+  recycledIds?: Set<string>;
+}) {
   const enrolled = revolvingBorrowers(loans);
+  const hasRecycled = loans.some((l) => recycledIds.has(l.id));
 
   const statusOf = (loan: Loan) => {
     const state = getLoanState(loan, asOf);
@@ -36,6 +46,7 @@ export function LoanBookTable({ loans, asOf = new Date() }: { loans: Loan[]; asO
   );
 
   return (
+    <div className="space-y-2">
     <div className="overflow-x-auto rounded-2xl border border-[var(--sapphire-line)] bg-white shadow-sm">
       <table className="w-full min-w-[720px] border-collapse text-sm">
         <thead>
@@ -59,10 +70,25 @@ export function LoanBookTable({ loans, asOf = new Date() }: { loans: Loan[]; asO
             return (
               <tr key={loan.id} className="border-t border-[var(--cream-2)] align-top">
                 <Td>
-                  <p className="font-semibold text-[var(--ink)]">{loan.borrower}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold text-[var(--ink)]">{loan.borrower}</p>
+                    {recycledIds.has(loan.id) && (
+                      <span
+                        className="rounded-full bg-[var(--cream-2)] px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[var(--slate)] uppercase"
+                        title="Re-lent: the same capital the borrower already repaid, not new money"
+                      >
+                        re-lent
+                      </span>
+                    )}
+                  </div>
                   {loan.purpose && <p className="mt-0.5 text-xs text-[var(--slate-soft)]">{loan.purpose}</p>}
                 </Td>
-                <Td className="text-right tabular text-[var(--azure-deep)]">{formatFCFA(loan.principal)}</Td>
+                <Td
+                  className={`text-right tabular ${recycledIds.has(loan.id) ? "italic text-[var(--slate-soft)]" : "text-[var(--azure-deep)]"}`}
+                  title={recycledIds.has(loan.id) ? "Re-lent — same capital recycled, not new money deployed" : undefined}
+                >
+                  {formatFCFA(loan.principal)}
+                </Td>
                 <Td className="text-right tabular text-[var(--azure-deep)]">{formatFCFA(loan.totalDue)}</Td>
                 <Td className="text-right tabular text-[var(--slate)]">{received > 0 ? formatFCFA(received) : "—"}</Td>
                 <Td className={`text-right tabular font-semibold ${owed > 0 ? "text-[var(--ink)]" : "text-[var(--slate-soft)]"}`}>
@@ -93,6 +119,14 @@ export function LoanBookTable({ loans, asOf = new Date() }: { loans: Loan[]; asO
         </tfoot>
       </table>
     </div>
+      {hasRecycled && (
+        <p className="px-1 text-xs text-[var(--slate-soft)]">
+          <span className="font-semibold">Re-lent</span> marks a cycle funded by capital the borrower already repaid
+          (the revolving facility). It is outstanding now, but it is the same money going out again, not new principal —
+          so it is never counted as fresh capital twice.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -100,6 +134,10 @@ function Th({ children, className = "" }: { children?: React.ReactNode; classNam
   return <th className={`px-4 py-3 text-xs font-semibold tracking-wide uppercase ${className}`}>{children}</th>;
 }
 
-function Td({ children, className = "" }: { children?: React.ReactNode; className?: string }) {
-  return <td className={`px-4 py-3 ${className}`}>{children}</td>;
+function Td({ children, className = "", title }: { children?: React.ReactNode; className?: string; title?: string }) {
+  return (
+    <td className={`px-4 py-3 ${className}`} title={title}>
+      {children}
+    </td>
+  );
 }

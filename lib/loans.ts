@@ -186,6 +186,33 @@ export function revolvingBorrowers(loans: Loan[]): Set<string> {
   return enrolled;
 }
 
+/**
+ * Loans that re-lend capital a borrower has already handed back: a later-disbursed loan of a borrower
+ * who has an earlier, repaid loan (the revolving facility, or simply a repeat loan taken after the
+ * first came back). Their principal is the same money going out again, so it must not be counted as
+ * new capital a second time. Mirrors recycled_ids in scripts/build-loan-book-xlsx.py.
+ *
+ * Pass EVERY loan, active and repaid, or an early repaid cycle won't be seen.
+ */
+export function recycledLoanIds(loans: Loan[]): Set<string> {
+  const byBorrower = new Map<string, Loan[]>();
+  for (const loan of loans) {
+    const list = byBorrower.get(loan.borrower) ?? [];
+    list.push(loan);
+    byBorrower.set(loan.borrower, list);
+  }
+  const recycled = new Set<string>();
+  for (const [, list] of byBorrower) {
+    const ordered = [...list].sort(
+      (a, b) => (a.disbursedOn ?? a.dueOn ?? "").localeCompare(b.disbursedOn ?? b.dueOn ?? "") || a.id.localeCompare(b.id)
+    );
+    ordered.forEach((loan, i) => {
+      if (ordered.slice(0, i).some((earlier) => earlier.repaidOn)) recycled.add(loan.id);
+    });
+  }
+  return recycled;
+}
+
 export function portfolioTotals(loans: Loan[], asOf: Date = new Date()) {
   const totalPrincipal = loans.reduce((sum, l) => sum + l.principal, 0);
   const totalContracted = loans.reduce((sum, l) => sum + l.totalDue, 0);
