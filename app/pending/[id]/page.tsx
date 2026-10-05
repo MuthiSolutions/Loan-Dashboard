@@ -56,6 +56,13 @@ export default async function PendingDetailPage({ params }: { params: Promise<{ 
               <>
                 {feesTotal > 0 && <Stat label="Fee" value={formatFCFA(feesTotal)} tone="text-[var(--slate-soft)]" />}
                 <Stat label="Total to repay" value={formatFCFA(totalToRepay)} tone="text-[var(--azure-deep)]" />
+                {entry.kind === "term" && entry.termMonths > 0 && (
+                  <Stat
+                    label="Repayment"
+                    value={`${entry.termMonths} × ${formatFCFA(Math.round(totalToRepay / entry.termMonths))}/mo`}
+                    tone="text-[var(--slate-soft)]"
+                  />
+                )}
               </>
             ) : (
               <Stat label="Terms" value="Not yet set" tone="text-[var(--slate-soft)]" />
