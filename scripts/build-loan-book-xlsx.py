@@ -543,8 +543,51 @@ def build(data_path, out_path, as_of):
                 bs.row_dimensions[br].height = 14 * (1 + len(text) // 118)
                 br += 1
 
+    # ================================================ pending disbursements
+    # Non-declined pipeline entries are signed-or-requested deals about to fund, not dead ones, so
+    # they get their own sheet rather than being lumped in with "not funded". No money has moved yet,
+    # so none of this touches the totals on the front sheet.
+    pending = [e for e in considered if not e.get("declined_on")]
+    declined = [e for e in considered if e.get("declined_on")]
+
+    if pending:
+        ps = wb.create_sheet("Pending disbursements")
+        ps.sheet_view.showGridLines = False
+        ps.column_dimensions["A"].width = 26
+        ps.column_dimensions["B"].width = 95
+        pr = title(ps, 1, "PENDING DISBURSEMENTS")
+        c = ps.cell(row=pr, column=1, value="Signed or requested, not yet funded. No money has moved, so nothing here is in the totals on the loan status sheet.")
+        c.font = f(10, italic=True, color=MUTED)
+        pr += 2
+        for entry in pending:
+            name = entry.get("borrower") or entry.get("label") or entry["id"]
+            pr = section(ps, pr, name.upper(), 2)
+            pr = label_value(ps, pr, "Status", entry.get("status") or "Pending", color=BLACK)
+            pr = label_value(ps, pr, "Contact", entry.get("contact") or "Not on file")
+            principal = i(entry.get("principal")) or 0
+            fees_total = sum(int(fee["amount"]) for fee in (entry.get("fees") or []))
+            is_term = bool(entry.get("term_months"))
+            total_due = i(entry.get("total_due")) or ((principal + fees_total) if is_term else None)
+            pr = label_value(ps, pr, "To release", principal, MONEY)
+            if fees_total:
+                pr = label_value(ps, pr, "Cost of credit", fees_total, MONEY)
+            if total_due:
+                pr = label_value(ps, pr, "Total to repay", total_due, MONEY)
+                if is_term:
+                    monthly = round(total_due / entry["term_months"])
+                    pr = label_value(ps, pr, "Repayment", f"{entry['term_months']} x {i(monthly):,} / month".replace(",", " "), color=BLACK)
+            else:
+                pr = label_value(ps, pr, "Terms", "Not yet set", color=BLACK)
+            for note in (entry.get("notes") or []):
+                nc = ps.cell(row=pr, column=1, value=redact_note(note))
+                nc.font = f(10); nc.alignment = Alignment(wrap_text=True, vertical="top")
+                ps.merge_cells(start_row=pr, start_column=1, end_row=pr, end_column=2)
+                ps.row_dimensions[pr].height = 14 * (1 + len(note) // 110)
+                pr += 1
+            pr += 1
+
     # ======================================================= not funded
-    if considered:
+    if declined:
         ns = wb.create_sheet("Considered, not funded")
         ns.sheet_view.showGridLines = False
         ns.column_dimensions["A"].width = 26
@@ -554,7 +597,7 @@ def build(data_path, out_path, as_of):
                                             "No principal, no fees, no exposure.")
         c.font = f(10, italic=True, color=MUTED)
         nr += 2
-        for entry in considered:
+        for entry in declined:
             nr = section(ns, nr, (entry.get("borrower") or entry.get("label") or entry["id"]).upper(), 2)
             nr = label_value(ns, nr, "Contact", entry.get("contact") or "Not on file")
             nr = label_value(ns, nr, "Amount discussed", i(entry.get("principal")), MONEY)
@@ -596,7 +639,9 @@ def method_text(as_of_cell):
             "whether the borrower is on the 12-month revolving facility. Start here.",
             "One sheet per borrower: the full file — who they are, each loan's position, the story of how it "
             "went, the paperwork held, and the notes.",
-            "Considered, not funded: deals underwritten where no money ever moved.",
+            "Pending disbursements: deals signed or requested but not yet funded — no money has moved, so they "
+            "are not in the totals here.",
+            "Considered, not funded: deals that were underwritten but declined or dropped, where no money moved.",
         ]),
         ("The one cell you can change", [
             f"Loan status, cell {as_of_cell}, the yellow one, is the date everything is measured at. Change it and "
