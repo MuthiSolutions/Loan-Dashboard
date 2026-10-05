@@ -1,4 +1,4 @@
-import { getActiveLoans, getCashPosition, getCommissions, getPipelineEntries, getRepaidLoans } from "@/lib/repo";
+import { getActiveLoans, getCashPosition, getCommissions, getPipelineEntries } from "@/lib/repo";
 import { formatFCFA, portfolioTotals } from "@/lib/loans";
 import { Header } from "@/components/Header";
 
@@ -7,9 +7,8 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const asOf = new Date();
-  const [activeLoans, repaidLoans, pipeline, cashPosition, commissions] = await Promise.all([
+  const [activeLoans, pipeline, cashPosition, commissions] = await Promise.all([
     getActiveLoans(),
-    getRepaidLoans(),
     getPipelineEntries(),
     getCashPosition(),
     getCommissions(),
@@ -17,7 +16,6 @@ export default async function HomePage() {
 
   const totals = portfolioTotals(activeLoans, asOf);
   const totalCash = cashPosition.inBank + cashPosition.heldByFounder;
-  const borrowerCount = new Set([...activeLoans, ...repaidLoans].map((l) => l.borrower)).size;
   const payable = commissions.filter((c) => c.status === "payable").reduce((s, c) => s + c.amount, 0);
   const toRelease = pipeline.reduce((s, e) => s + e.principal, 0);
 
@@ -36,14 +34,6 @@ export default async function HomePage() {
       blurb: "Every loan on one line — repaid or not, and who is on the revolving facility.",
       figure: `${totals.activeCount}`,
       figureLabel: "active loans",
-      tone: "default",
-    },
-    {
-      href: "/borrowers",
-      label: "Borrowers",
-      blurb: "Credit scores and the plain-language rubric behind each grade.",
-      figure: `${borrowerCount}`,
-      figureLabel: "borrowers",
       tone: "default",
     },
     {

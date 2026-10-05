@@ -4,7 +4,6 @@ import { LogoutButton } from "./LogoutButton";
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/loan-book", label: "Loan Book" },
-  { href: "/borrowers", label: "Borrowers" },
   { href: "/commissions", label: "Commissions" },
   { href: "/ledger", label: "Ledger" },
 ];
