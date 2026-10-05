@@ -1,11 +1,11 @@
 import type { PipelineEntry } from "@/lib/types";
 import { formatFCFA } from "@/lib/loans";
-import { DocumentLinks } from "./DocumentLinks";
 
 /**
  * Money about to go out, before it hits the active book: deals where a contract has been sent and we
  * are waiting on a signature to disburse, and fresh requests whose terms are not yet agreed. Kept
- * visible on the dashboard so upcoming disbursements and open requests are never out of sight.
+ * visible on the dashboard so upcoming disbursements and open requests are never out of sight. Each
+ * card links through to its own detail page.
  */
 export function PendingDisbursements({ entries }: { entries: PipelineEntry[] }) {
   if (entries.length === 0) {
@@ -49,16 +49,24 @@ function PendingCard({ entry }: { entry: PipelineEntry }) {
   const termsSet = totalToRepay > 0;
 
   return (
-    <div className="rounded-xl border border-[var(--cream-2)] bg-[var(--cream)]/40 p-4">
+    <a
+      href={`/pending/${entry.id}`}
+      className="group block rounded-xl border border-[var(--cream-2)] bg-[var(--cream)]/40 p-4 transition hover:border-[var(--azure)]/50 hover:bg-white hover:shadow-sm"
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="font-display text-base font-semibold text-[var(--ink)]">{title}</p>
+          <p className="font-display text-base font-semibold text-[var(--ink)] group-hover:text-[var(--azure-deep)]">
+            {title}
+          </p>
           {entry.kind === "pending" && entry.purpose && (
             <p className="mt-0.5 text-sm text-[var(--slate-soft)]">{entry.purpose}</p>
           )}
           {contact && <p className="mt-0.5 text-sm text-[var(--slate-soft)]">{contact}</p>}
         </div>
-        <span className="rounded-full bg-[#f4e6c8] px-3 py-1 text-xs font-semibold text-[var(--amber)]">{entry.status}</span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-[#f4e6c8] px-3 py-1 text-xs font-semibold text-[var(--amber)]">{entry.status}</span>
+          <span className="text-[var(--azure-deep)] transition group-hover:translate-x-0.5">→</span>
+        </div>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
@@ -76,19 +84,12 @@ function PendingCard({ entry }: { entry: PipelineEntry }) {
         )}
       </div>
 
-      {entry.notes && entry.notes.length > 0 && (
-        <ul className="mt-3 space-y-1.5 border-t border-[var(--cream-2)] pt-3">
-          {entry.notes.map((note) => (
-            <li key={note} className="flex gap-2 text-xs text-[var(--slate-soft)]">
-              <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-[var(--azure)]" />
-              {note}
-            </li>
-          ))}
-        </ul>
+      {entry.documents && entry.documents.length > 0 && (
+        <p className="mt-3 border-t border-[var(--cream-2)] pt-3 text-xs text-[var(--slate-soft)]">
+          {entry.documents.length} document{entry.documents.length > 1 ? "s" : ""} on file — open to view
+        </p>
       )}
-
-      <DocumentLinks documents={entry.documents} />
-    </div>
+    </a>
   );
 }
 

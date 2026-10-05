@@ -46,8 +46,8 @@ export function CommissionsPanel({ commissions }: { commissions: CommissionRow[]
 
       <ul className="mt-5 divide-y divide-[var(--cream-2)]">
         {[...payable, ...paid].map((c) => (
-          <li key={c.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3">
-            <div className="min-w-0">
+          <li key={c.id} className="flex items-baseline justify-between gap-x-4 py-3">
+            <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="truncate text-sm font-semibold text-[var(--ink)]">{c.borrower}</p>
                 {c.loanNumber !== undefined && (
