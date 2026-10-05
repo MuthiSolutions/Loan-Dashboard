@@ -87,10 +87,14 @@ compounded. A few loans are 1% per day by separate agreement with the borrower
 
 A loan's cadence can change mid-life. `late_penalty_switch_on` + `late_penalty_period_after` express
 "accrue at the original cadence up to this date, then at the new cadence after it," same 1% rate
-throughout. Jean Philippe (`ane-jean-philippe`) is the first: one weekly grace week locked at 2,000,
-then 1% per day from 2 October 2026. Do not model a cadence change by flipping `late_penalty_period`
-outright — that would charge the grace week at the daily rate and overstate the debt. `penaltyBreakdown()`
-in `lib/loans.ts` is the single source of truth for this and the xlsx builder mirrors it.
+throughout. The penalty is simple within each phase, but the later phase accrues on the balance the
+earlier one left, not on the original total due — so the phases multiply, `totalDue * (1 + rate *
+phase1Units) * (1 + rate * phase2Units)`; they do not just add their units. Jean Philippe
+(`ane-jean-philippe`) is the first: one weekly grace week took what he owed to 202,000, then 1% per
+day from 2 October 2026 charged on that 202,000 (2,020/day). Do not model a cadence change by flipping
+`late_penalty_period` outright — that would charge the grace week at the daily rate and overstate the
+debt. `penaltyBreakdown()` gives the per-phase units and `formulaAmountDue()` applies them, in
+`lib/loans.ts`, the single source of truth; the xlsx builder mirrors both.
 
 ## Where things live
 

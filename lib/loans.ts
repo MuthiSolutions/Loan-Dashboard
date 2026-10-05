@@ -83,10 +83,22 @@ export function penaltyBreakdown(loan: Loan, asOf: Date = new Date()): PenaltyBr
   return { total: phase1Units + phase2Units, phase1Units, phase2Units, switched: true };
 }
 
-/** Formula amount: totalDue plus the late penalty accrued per this loan's own cadence (including any mid-life switch) since the due date. */
+/**
+ * Formula amount: totalDue plus the late penalty accrued per this loan's own cadence (including any
+ * mid-life switch) since the due date.
+ *
+ * The penalty is simple within each cadence phase, but a phase that follows a cadence switch accrues
+ * on the balance the earlier phase left behind, not on the original total due — so the phases
+ * multiply rather than their units simply adding. Jean Philippe's one weekly grace week lifts the
+ * base from 200,000 to 202,000, and the 1% per day from 2 October is charged on that 202,000
+ * (2,020/day), not on the original 200,000. Without a switch, phase2Units is 0 and this reduces to
+ * the plain totalDue * (1 + rate * units).
+ */
 export function formulaAmountDue(loan: Loan, asOf: Date = new Date()): number {
-  const units = penaltyBreakdown(loan, asOf).total;
-  return Math.round(loan.totalDue * (1 + loan.latePenaltyRatePerWeek * units));
+  const { phase1Units, phase2Units } = penaltyBreakdown(loan, asOf);
+  const rate = loan.latePenaltyRatePerWeek;
+  const afterPhase1 = loan.totalDue * (1 + rate * phase1Units);
+  return Math.round(afterPhase1 * (1 + rate * phase2Units));
 }
 
 /** Full value of the deal as of this date — manual pin or formula — before netting out any payments already received. This is what profit is measured against, so a partial payment doesn't make the deal look smaller than it is. */

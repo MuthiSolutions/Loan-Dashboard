@@ -188,9 +188,12 @@ def owed_now_expr(loan, asof):
         sw = xldate(switch)
         phase1 = units(period, due, f"MIN({asof},{sw})")
         phase2 = f"IF({asof}>{sw},{units(after, sw, asof)},0)"
-        unit_expr = f"({phase1}+{phase2})"
-    else:
-        unit_expr = units(period, due, asof)
+        # Simple within each phase, but the daily phase accrues on the balance the weekly grace
+        # phase left behind, not on the original total due. JP's one grace week lifts the base to
+        # 202,000 and the 1% per day is charged on that 202,000 (2,020/day) -- so the phases
+        # multiply rather than their units simply adding.
+        return f"ROUND({td}*(1+{rate}*{phase1})*(1+{rate}*{phase2}),0)"
+    unit_expr = units(period, due, asof)
     return f"ROUND({td}*(1+{rate}*{unit_expr}),0)"
 
 
@@ -597,9 +600,10 @@ def method_text(as_of_cell):
         ("The late penalty", [
             "1% per started week on the total due (not the principal), simple, never compounded. A few loans are "
             "1% per day by separate agreement.",
-            "Jean Philippe was given one week after his 25 September due date to repay at the weekly 1%; from "
-            "2 October 2026 his penalty is 1% per day. The grace week is locked at one weekly step (2,000) and "
-            "the daily rate runs from 2 October — the sheet accrues both correctly off the As-of date.",
+            "Jean Philippe was given one week after his 25 September due date to repay at the weekly 1%, which "
+            "brought what he owed to 202,000. From 2 October 2026 the penalty is 1% per day on that 202,000 "
+            "(2,020 a day), so the grace week is carried into the daily base rather than left out. The sheet "
+            "accrues both off the As-of date.",
             "Marie Andrea's renewable convention sets 1% per day COMPOUNDED daily (Article 7). This workbook "
             "carries it as 1% per day simple, so once she is more than a day late the real contractual figure is "
             "a little higher than shown. She is not currently late.",
