@@ -1,18 +1,19 @@
-"""Step 2 of 2 for the Excel loan book JP asked for.
-
-Builds a workbook with a summary sheet plus one sheet per borrower from the JSON
-that scripts/export-loan-book.mjs dumps.
+"""Step 2 of 2 for the loan-book workbook JP asked for.
 
     node scripts/export-loan-book.mjs data.json
-    python scripts/build-loan-book-xlsx.py data.json "Muthi Loan Book.xlsx" 2026-10-01
+    python scripts/build-loan-book-xlsx.py data.json "Muthi Loan Book.xlsx" 2026-10-05
 
-The third argument is the "as of" date and only sets the default: the figure lives
-in one input cell on the summary sheet, so changing it there re-accrues every open
-loan's late penalty across the whole workbook.
+The third argument is the "as of" date and only sets the default: the figure lives in one yellow
+input cell on the front sheet, so changing it there re-accrues every open loan's late penalty.
 
-Everything derived is a formula, never a Python-computed constant, so the workbook
-still recalculates once it leaves here. Only the loan terms themselves are typed in
-as values, and those are the blue cells.
+Designed to be read, not waded through. The front "Loan status" sheet answers the three things JP
+asked for, one clean line per loan: what happened / did they repay, what is still owed, and whether
+the borrower is on the 12-month revolving facility. The penalty mechanics, fee composition and
+settlement arithmetic are kept off that page and live on each borrower's own sheet, so the overview
+stays legible.
+
+Open loans accrue live off the As-of cell. Jean Philippe's penalty is two-phase (one weekly grace
+week, then 1% per day from 2 October 2026); that is mirrored here exactly as in lib/loans.ts.
 """
 
 import json
@@ -22,6 +23,7 @@ from datetime import date, datetime
 
 from openpyxl import Workbook
 from openpyxl.comments import Comment
+from openpyxl.formatting.rule import CellIsRule
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
@@ -30,20 +32,28 @@ from openpyxl.utils import get_column_letter
 FONT = "Arial"
 
 INK = "1F2933"
+MUTED = "5A6B7D"
+FAINT = "9AA7B4"
 RULE = "C9D2DD"
-BAND = "F2F5F9"
+BAND = "F4F7FB"
 HEAD = "1F3A5F"
 ACCENT = "E8EEF6"
 
-BLUE = "0000FF"      # typed-in input
-BLACK = "000000"     # formula
-GREEN = "008000"     # link to another sheet
-YELLOW = "FFFF00"    # fill it in / key assumption
+BLUE = "0000FF"      # typed-in term, from the signed loan file
+BLACK = "000000"     # calculated by the sheet
+GREEN = "008000"     # pulled from the front sheet
+YELLOW = "FFFF00"    # the one cell to change
+
+OK_FG, OK_BG = "1E7D32", "E4F2E4"
+DANGER_FG, DANGER_BG = "B3261E", "FDE7E9"
+WARN_FG, WARN_BG = "9A6A00", "FBF0D9"
 
 MONEY = '#,##0;(#,##0);-'
 DAYS = '0'
 PCT = '0.0%'
 DATEF = 'DD MMM YYYY'
+
+FRONT = "Loan status"
 
 thin = Side(style="thin", color=RULE)
 BOX = Border(left=thin, right=thin, top=thin, bottom=thin)
@@ -73,9 +83,10 @@ def section(ws, row, text, last_col):
 
 def label_value(ws, row, label, value, number_format=None, color=BLUE, note=None, col=1):
     lc = ws.cell(row=row, column=col, value=label)
-    lc.font = f(10, color="5A6B7D")
+    lc.font = f(10, color=MUTED)
     vc = ws.cell(row=row, column=col + 1, value=value)
     vc.font = f(10, color=color)
+    vc.alignment = Alignment(horizontal="left")
     if number_format:
         vc.number_format = number_format
     if note:
@@ -103,8 +114,8 @@ def strip_accents(s):
     return "".join(ch for ch in unicodedata.normalize("NFD", s) if unicodedata.category(ch) != "Mn")
 
 
-# Excel caps sheet names at 31 characters and forbids : \ / ? * [ ]. Reversing the
-# name so the family name leads keeps the tabs sorted the way a loan file is read.
+# Excel caps sheet names at 31 characters and forbids : \ / ? * [ ]. Family name leads so the tabs
+# sort the way a loan file is read.
 SHEET_NAMES = {
     "Amoi David-Allan Koizan": "Koizan Amoi David-Allan",
     "Claude Arnaud Niky Konan": "Konan Claude Arnaud",
@@ -141,28 +152,64 @@ def i(value):
     return None if value is None else int(value)
 
 
-# The dashboard's notes are written for Muthi's own eyes. This workbook goes to an outside
-# funding partner, so a note carrying a borrower's identity-document particulars is replaced
-# by the fact it establishes and nothing more. The full record stays in the loan book at
-# Muthi-Docs/04-Loan-Book, which is where it belongs.
+def xldate(iso):
+    y, m, dd = iso.split("-")
+    return f"DATE({int(y)},{int(m)},{int(dd)})"
+
+
+def is_revolving_loan(loan):
+    """A loan on the 12-month revolving facility: its contract or purpose names the renewable line."""
+    cr = (loan.get("contract_ref") or "").lower()
+    pu = (loan.get("purpose") or "").lower()
+    return "renouvelable" in cr or "revolving" in cr or "renewable" in pu or "revolving" in pu
+
+
+def owed_now_expr(loan, asof):
+    """
+    Excel expression for the full amount owed on an OPEN loan as of the As-of cell, late penalty
+    included. Mirrors penaltyBreakdown() in lib/loans.ts: a single cadence, or a mid-life switch
+    (weekly up to the switch date, then daily). The signed terms are baked in as literals; only the
+    As-of date varies, so the row stays self-contained and still accrues.
+    """
+    if loan.get("manual_amount_override") is not None:
+        return str(int(loan["manual_amount_override"]))
+    td = int(loan["total_due"])
+    rate = float(loan["late_penalty_rate_per_week"])
+    due = xldate(loan["due_on"])
+    period = loan["late_penalty_period"]
+    switch = loan.get("late_penalty_switch_on")
+    after = loan.get("late_penalty_period_after")
+
+    def units(period_, start, end):
+        span = f"MAX(0,{end}-{start})"
+        return span if period_ == "day" else f"ROUNDUP({span}/7,0)"
+
+    if switch and after:
+        sw = xldate(switch)
+        phase1 = units(period, due, f"MIN({asof},{sw})")
+        phase2 = f"IF({asof}>{sw},{units(after, sw, asof)},0)"
+        unit_expr = f"({phase1}+{phase2})"
+    else:
+        unit_expr = units(period, due, asof)
+    return f"ROUND({td}*(1+{rate}*{unit_expr}),0)"
+
+
+# The dashboard's notes are written for Muthi's own eyes. This workbook goes to an outside funding
+# partner, so a note carrying a borrower's identity-document particulars is replaced by the fact it
+# establishes and nothing more. The full record stays in the loan book at Muthi-Docs/04-Loan-Book.
 IDENTITY_MARKERS = (
     "cni", "carte nationale", "nni", "date and place of birth",
     "date et lieu de naissance", "passport", "passeport", "numero d'identification",
 )
 
 IDENTITY_REPLACEMENT = (
-    "Identity verified against a national identity document held on file, and the identity "
-    "block of the signed contract matches it. The document's particulars are not reproduced "
-    "in this workbook."
+    "Identity verified against a national identity document held on file, and the identity block of "
+    "the signed contract matches it. The document's particulars are not reproduced in this workbook."
 )
 
-
-# Two kinds of phrasing in the dashboard's own records do not belong in a partner's copy:
-# Muthi's internal treasury routing (which of our accounts a payment landed in), and the
-# third-person references to the partner himself that read oddly when he is the reader.
-# Only these exact phrases are rewritten, the originals stay in the loan dashboard, and the
-# substance of every record is left alone. Deliberately NOT rewritten: historical balances
-# quoted as they were understood at the time, which are statements of record.
+# Two kinds of phrasing in the dashboard's records do not belong in a partner's copy: Muthi's
+# internal treasury routing (which of our accounts a payment landed in), and third-person references
+# to the partner himself. Only these exact phrases are rewritten; the substance is left alone.
 EXPORT_REWRITES = (
     ("Reaffirmed to Muthi's other stakeholder that", "Reaffirmed to Muthi that"),
     ("Stakeholder demanded full payment", "Muthi demanded full payment"),
@@ -200,8 +247,8 @@ def build(data_path, out_path, as_of):
     disbursed = [l for l in data["loans"] if l["kind"] == "active"]
     considered = [l for l in data["loans"] if l["kind"] != "active"]
 
-    # A borrower's own sequence: their first loan is #1. Ordered by disbursement so
-    # Marie Andrea's renewable cycle reads as her second loan, not another first.
+    # A borrower's own sequence: first loan #1. Ordered by disbursement so Marie Andrea's renewable
+    # cycle reads as her second loan, not another first.
     disbursed.sort(key=lambda l: (l["disbursed_on"] or l["due_on"] or "", l["id"]))
     seq, by_borrower = {}, {}
     for loan in disbursed:
@@ -210,33 +257,32 @@ def build(data_path, out_path, as_of):
         for n, loan in enumerate(loans, start=1):
             seq[loan["id"]] = n
 
+    # Borrower-level enrolment on the 12-month revolving facility.
+    enrolled = {b: any(is_revolving_loan(l) for l in loans) for b, loans in by_borrower.items()}
+
     wb = Workbook()
 
-    # ============================================================== summary
+    # ============================================================ front sheet
     ws = wb.active
-    ws.title = "Loan book"
+    ws.title = FRONT
 
-    r = title(ws, 1, "MUTHI SOLUTIONS LOAN BOOK")
-    c = ws.cell(row=r, column=1, value="Every loan disbursed to date, with one sheet per borrower behind this one.")
-    c.font = f(10, italic=True, color="5A6B7D")
+    r = title(ws, 1, "MUTHI SOLUTIONS — LOAN STATUS")
+    c = ws.cell(row=r, column=1, value="Every loan Muthi has disbursed, where each one stands today. One sheet per borrower behind this, for the detail.")
+    c.font = f(10, italic=True, color=MUTED)
     r += 2
 
     as_of_row = r
     r = label_value(ws, r, "As of", as_of, DATEF, BLUE,
-                    "Change this date and every open loan's late penalty re-accrues across the whole workbook.",
+                    "The one cell to change. Move this date and every open loan's late penalty and status re-accrue.",
                     col=2)
     ws.cell(row=as_of_row, column=3).fill = PatternFill("solid", fgColor=YELLOW)
-    AS_OF = f"$C${as_of_row}"
-
+    ASOF = f"$C${as_of_row}"
     r = label_value(ws, r, "Currency", "FCFA (XOF)", color=BLACK, col=2)
-    r = label_value(ws, r, "Source", "Muthi loan dashboard database", color=BLACK, col=2)
     r += 1
 
-    headers = ["Loan #", "Borrower", "Purpose", "Disbursed", "Due", "Repaid",
-               "Principal", "Fees", "Total due", "Penalty rate", "Penalty per",
-               "Days late", "Late penalty", "Settlement adj.", "Owed now", "Received",
-               "Still outstanding", "Profit", "Status"]
-    widths = [7, 56, 46, 12, 12, 12, 13, 12, 13, 9, 9, 9, 12, 13, 13, 13, 14, 13, 11]
+    headers = ["#", "Borrower", "Purpose", "Lent", "Total due", "Status",
+               "Repaid / due", "Received", "Still owed", "Profit", "12-month revolving facility"]
+    widths = [4, 30, 34, 12, 12, 11, 13, 13, 13, 12, 28]
     hrow = r
     r = header_row(ws, r, headers, widths)
 
@@ -244,6 +290,7 @@ def build(data_path, out_path, as_of):
     rows_for = {}
     for n, loan in enumerate(disbursed, start=1):
         rows_for[loan["id"]] = r
+        repaid = loan.get("repaid_on")
         banded = PatternFill("solid", fgColor=BAND) if n % 2 == 0 else None
 
         def put(col, value, fmt=None, color=BLACK, bold=False, align=None):
@@ -255,54 +302,57 @@ def build(data_path, out_path, as_of):
                 cell.fill = banded
             cell.border = BOX
             if align:
-                cell.alignment = Alignment(horizontal=align)
+                cell.alignment = Alignment(horizontal=align, vertical="center")
             return cell
 
-        put(1, n, align="center")
         tags = []
         if len(by_borrower[loan["borrower"]]) > 1:
             tags.append(f"loan #{seq[loan['id']]}")
         if loan.get("related_party"):
             tags.append("related party")
+
+        due = xldate(loan["due_on"])
+        put(1, n, align="center")
         put(2, loan["borrower"] + (f"  ({', '.join(tags)})" if tags else ""))
         put(3, loan["purpose"])
-        put(4, d(loan["disbursed_on"]), DATEF, BLUE)
-        put(5, d(loan["due_on"]), DATEF, BLUE)
-        put(6, d(loan["repaid_on"]), DATEF, BLUE)
-        put(7, i(loan["principal"]), MONEY, BLUE)
-        put(8, f"=I{r}-G{r}", MONEY)
-        put(9, i(loan["total_due"]), MONEY, BLUE)
-        put(10, float(loan["late_penalty_rate_per_week"]), PCT, BLUE)
-        put(11, loan["late_penalty_period"], color=BLUE, align="center")
-        # Accrual stops on the day a loan is settled; an open loan keeps running to "As of".
-        put(12, f'=IF(E{r}="","",IF(F{r}="",MAX(0,{AS_OF}-E{r}),MAX(0,F{r}-E{r})))', DAYS)
-        # The contractual penalty, by the rule on this row: whole days or whole started weeks,
-        # per each loan's own contract. It is computed the same way whether the loan is closed
-        # or still running, so the figure can always be checked against the rate beside it.
-        put(13, f'=IF(L{r}="","",ROUND(I{r}*J{r}*IF(K{r}="day",L{r},IF(L{r}=0,0,ROUNDUP(L{r}/7,0))),0))', MONEY)
-        # Anything collected above or below total due plus that penalty was negotiated, not
-        # computed. PRAIA settled at 6,680,000 against a rule figure of 6,562,500; without this
-        # column the 117,500 difference would hide inside "Late penalty" and refuse to reconcile.
-        put(14, f'=IF(F{r}="",0,P{r}-I{r}-M{r})', MONEY)
-        put(15, f'=IF(F{r}="",I{r}+M{r},P{r})', MONEY)
-        put(16, i(loan["amount_paid"]) or 0, MONEY, BLUE)
-        put(17, f"=MAX(0,O{r}-P{r})", MONEY)
-        put(18, f"=O{r}-G{r}", MONEY, bold=True)
-        put(19, f'=IF(F{r}<>"","Repaid",IF(E{r}="","",IF(L{r}>0,"OVERDUE",IF(E{r}-{AS_OF}<=7,"Due soon","On track"))))',
-            align="center")
+        put(4, i(loan["principal"]), MONEY, BLUE)
+        put(5, i(loan["total_due"]), MONEY, BLUE)
+        if repaid:
+            put(6, "Repaid", color=OK_FG, bold=True, align="center")
+            put(7, d(repaid), DATEF, BLUE)
+            put(8, i(loan["amount_paid"]) or 0, MONEY, BLUE)
+            put(9, 0, MONEY)
+        else:
+            put(6, f'=IF({ASOF}>{due},"OVERDUE",IF({due}-{ASOF}<=7,"Due soon","On track"))', bold=True, align="center")
+            put(7, d(loan["due_on"]), DATEF, BLUE)
+            put(8, i(loan["amount_paid"]) or 0, MONEY, BLUE)
+            put(9, f"=MAX(0,{owed_now_expr(loan, ASOF)}-H{r})", MONEY, bold=True)
+        put(10, f"=I{r}+H{r}-D{r}", MONEY)  # realised for repaid, expected (penalty incl.) for open
+        rev = enrolled[loan["borrower"]]
+        put(11, "Yes — on the facility" if rev else "Not enrolled",
+            color=OK_FG if rev else FAINT, bold=rev)
         r += 1
 
     last_data = r - 1
+
+    # Status colours, so the page reads at a glance.
+    status_range = f"F{first_data}:F{last_data}"
+    for word, fg, bg in (("OVERDUE", DANGER_FG, DANGER_BG), ("Repaid", OK_FG, OK_BG),
+                         ("Due soon", WARN_FG, WARN_BG)):
+        ws.conditional_formatting.add(
+            status_range,
+            CellIsRule(operator="equal", formula=[f'"{word}"'],
+                       fill=PatternFill("solid", fgColor=bg), font=Font(name=FONT, bold=True, color=fg)),
+        )
+
+    # ---- totals row (follows the filter)
     total_row = r
     for col in range(1, len(headers) + 1):
         cell = ws.cell(row=total_row, column=col)
         cell.border = OVER
         cell.font = f(10, bold=True)
     ws.cell(row=total_row, column=2, value="TOTAL (follows the filter)").font = f(10, bold=True)
-    # SUBTOTAL, not SUM: the table has an autofilter, and a total that ignores filtering sits
-    # next to the filtered rows contradicting them. "Owed now" is deliberately not totalled -
-    # adding cash already banked to cash still owed produces a number with no meaning.
-    for col in (7, 8, 9, 13, 14, 16, 17, 18):
+    for col in (4, 5, 8, 9, 10):
         L = get_column_letter(col)
         cell = ws.cell(row=total_row, column=col, value=f"=SUBTOTAL(109,{L}{first_data}:{L}{last_data})")
         cell.number_format = MONEY
@@ -311,215 +361,163 @@ def build(data_path, out_path, as_of):
     r += 2
 
     # ---- recap
-    r = section(ws, r, "PORTFOLIO RECAP (whole book, not affected by filtering)", len(headers))
+    r = section(ws, r, "PORTFOLIO AT A GLANCE (whole book, not affected by filtering)", len(headers))
+    enrolled_names = [b for b, on in enrolled.items() if on]
     recap = [
         ("Loans disbursed", f"=COUNTA(B{first_data}:B{last_data})", DAYS),
-        ("Principal put out", f"=SUM(G{first_data}:G{last_data})", MONEY),
-        ("Fees contracted on it", f"=SUM(H{first_data}:H{last_data})", MONEY),
-        ("Late penalties charged", f"=SUM(M{first_data}:M{last_data})", MONEY),
-        ("Settled above the rule", f"=SUM(N{first_data}:N{last_data})", MONEY),
+        ("Repaid in full", f'=COUNTIF(F{first_data}:F{last_data},"Repaid")', DAYS),
+        ("Still open", f'=COUNTA(B{first_data}:B{last_data})-COUNTIF(F{first_data}:F{last_data},"Repaid")', DAYS),
         ("", None, None),
-        ("Loans repaid in full", f'=COUNTIF(S{first_data}:S{last_data},"Repaid")', DAYS),
-        ("Cash collected on them", f'=SUMIF(S{first_data}:S{last_data},"Repaid",P{first_data}:P{last_data})', MONEY),
-        ("Profit realised", f'=SUMIF(S{first_data}:S{last_data},"Repaid",R{first_data}:R{last_data})', MONEY),
+        ("Principal lent out", f"=SUM(D{first_data}:D{last_data})", MONEY),
+        ("Profit realised (repaid)", f'=SUMIF(F{first_data}:F{last_data},"Repaid",J{first_data}:J{last_data})', MONEY),
+        ("Profit expected (open)", f'=SUMIF(F{first_data}:F{last_data},"<>Repaid",J{first_data}:J{last_data})', MONEY),
         ("", None, None),
-        ("Loans still open", f'=COUNTA(B{first_data}:B{last_data})-COUNTIF(S{first_data}:S{last_data},"Repaid")', DAYS),
-        ("Principal still out", f'=SUMIF(S{first_data}:S{last_data},"<>Repaid",G{first_data}:G{last_data})', MONEY),
-        ("Overdue, collectable today", f'=SUMIF(S{first_data}:S{last_data},"OVERDUE",Q{first_data}:Q{last_data})', MONEY),
-        ("Not yet due", f'=SUMIF(S{first_data}:S{last_data},"<>OVERDUE",Q{first_data}:Q{last_data})', MONEY),
-        ("Total still owed to us", f"=SUM(Q{first_data}:Q{last_data})", MONEY),
-        ("Profit expected on it", f'=SUMIF(S{first_data}:S{last_data},"<>Repaid",R{first_data}:R{last_data})', MONEY),
+        ("Still owed to us", f"=SUM(I{first_data}:I{last_data})", MONEY),
+        ("  of which overdue now", f'=SUMIF(F{first_data}:F{last_data},"OVERDUE",I{first_data}:I{last_data})', MONEY),
+        ("  of which not yet due", f'=SUMIF(F{first_data}:F{last_data},"<>OVERDUE",I{first_data}:I{last_data})', MONEY),
+        ("", None, None),
+        ("Borrowers on the 12-month revolving facility", len(enrolled_names), DAYS),
     ]
-
     for label, formula, fmt in recap:
         if not label:
             r += 1
             continue
         lc = ws.cell(row=r, column=2, value=label)
-        lc.font = f(10, color="5A6B7D")
+        lc.font = f(10, color=MUTED)
         vc = ws.cell(row=r, column=3, value=formula)
         vc.font = f(11, bold=True)
-        vc.number_format = fmt
+        if fmt:
+            vc.number_format = fmt
         r += 1
-
+    if enrolled_names:
+        c = ws.cell(row=r, column=2, value="On the facility: " + ", ".join(sorted(enrolled_names)))
+        c.font = f(9, italic=True, color=OK_FG)
+        r += 1
     r += 1
+
     for line in (
-        "Blue figures are the signed loan terms, typed in from the loan files. "
-        "Black figures are calculated by the sheet.",
-        "Principal put out is cumulative. 300,000 of it is cycle 1 of Marie Andrea Koizan's renewable "
-        "facility, which re-lent principal she had repaid two days earlier, so new money required was "
-        "6,150,000 rather than 6,450,000.",
+        "Still owed on an overdue loan includes the late penalty accrued to the As-of date above.",
+        "Profit is realised (cash collected less principal) for repaid loans, expected (amount owed today "
+        "less principal) for open ones.",
+        "Full terms, the fee breakdown, the story of each loan and the paperwork on file are on each "
+        "borrower's own sheet (the tabs below).",
     ):
         c = ws.cell(row=r, column=1, value=line)
-        c.font = f(9, italic=True, color="5A6B7D")
+        c.font = f(9, italic=True, color=MUTED)
         r += 1
 
-    ws.freeze_panes = f"C{first_data}"
-    ws.auto_filter.ref = f"A{hrow}:S{last_data}"
+    ws.freeze_panes = f"A{first_data}"
+    ws.auto_filter.ref = f"A{hrow}:K{last_data}"
     ws.sheet_view.showGridLines = False
 
     # ========================================================= per borrower
     taken = set()
-    sheet_of = {}
-    for borrower in by_borrower:
-        sheet_of[borrower] = sheet_name_for(borrower, taken)
+    sheet_of = {b: sheet_name_for(b, taken) for b in by_borrower}
 
     for borrower, loans in by_borrower.items():
         bs = wb.create_sheet(sheet_of[borrower])
         bs.sheet_view.showGridLines = False
-        ncol = 1 + len(loans)
-        bs.column_dimensions["A"].width = 26
-        for k in range(len(loans)):
-            bs.column_dimensions[get_column_letter(2 + k)].width = 30
+        bs.column_dimensions["A"].width = 16
+        for col, w in zip("BCDEFG", (22, 13, 13, 13, 13, 13)):
+            bs.column_dimensions[col].width = w
 
         br = title(bs, 1, borrower)
-        back = bs.cell(row=br, column=1, value="Loan book summary")
-        back.hyperlink = "#'Loan book'!A1"
+        back = bs.cell(row=br, column=1, value="← Loan status")
+        back.hyperlink = f"#'{FRONT}'!A1"
         back.font = Font(name=FONT, size=9, color="0563C1", underline="single")
         br += 2
 
+        # ---- revolving-facility banner, the first thing JP asked about
+        on = enrolled[borrower]
+        banner = (
+            "On the 12-month revolving facility — renewable credit line, auto-renews for a year."
+            if on else "Not on the 12-month revolving facility."
+        )
+        for col in range(1, 8):
+            cell = bs.cell(row=br, column=col)
+            cell.fill = PatternFill("solid", fgColor=OK_BG if on else BAND)
+        bc = bs.cell(row=br, column=1, value=banner)
+        bc.font = f(10, bold=True, color=OK_FG if on else MUTED)
+        br += 2
+
         # ---- who they are
-        br = section(bs, br, "BORROWER", ncol)
-        profile = [
-            ("Contact", loans[0].get("contact")),
-            ("Profession", loans[0].get("profession")),
-            ("Employer", loans[0].get("employer")),
-            ("Contract type", loans[0].get("employment_type")),
-            ("Monthly income", i(loans[0].get("monthly_income"))),
-            ("Years in post", loans[0].get("tenure_years")),
-            ("Related party", "Yes, a Muthi associate" if loans[0].get("related_party") else "No"),
-            ("Loans with Muthi", len(loans)),
-        ]
+        br = section(bs, br, "BORROWER", 7)
+        profile = [("Contact", loans[0].get("contact")), ("Profession", loans[0].get("profession")),
+                   ("Employer", loans[0].get("employer"))]
+        if loans[0].get("monthly_income"):
+            profile.append(("Monthly income", i(loans[0]["monthly_income"])))
+        profile += [("Related party", "Yes, a Muthi associate" if loans[0].get("related_party") else "No"),
+                    ("Loans with Muthi", len(loans))]
         for label, value in profile:
             fmt = MONEY if label == "Monthly income" else None
             br = label_value(bs, br, label, value if value is not None else "Not on file", fmt,
-                             BLUE if value is not None else "9AA7B4")
+                             BLUE if value is not None else FAINT)
         br += 1
 
-        # ---- the loans themselves, one column each, pulled from the summary
-        br = section(bs, br, "LOAN TERMS AND POSITION", ncol)
-        hdr = br
-        bs.cell(row=hdr, column=1, value="").font = f(9, bold=True)
-        for k, loan in enumerate(loans):
-            c = bs.cell(row=hdr, column=2 + k, value=f"Loan #{seq[loan['id']]}")
-            c.font = f(10, bold=True, color="FFFFFF")
-            c.fill = PatternFill("solid", fgColor=HEAD)
-            c.alignment = Alignment(horizontal="center")
-            c.border = BOX
-        br += 1
-
-        # (label, summary column, number format, bold)
-        fields = [
-            ("Contract", None, None, False),
-            ("Purpose", "C", None, False),
-            ("Disbursed", "D", DATEF, False),
-            ("Due", "E", DATEF, False),
-            ("Final deadline", "deadline", DATEF, False),
-            ("Repaid", "F", DATEF, False),
-            ("Principal released", "G", MONEY, False),
-            ("Fees", "H", MONEY, False),
-            ("Total due at maturity", "I", MONEY, True),
-            ("Late penalty rate", "J", PCT, False),
-            ("Charged per", "K", None, False),
-            ("Days late", "L", DAYS, False),
-            ("Late penalty", "M", MONEY, False),
-            ("Settled above the rule", "N", MONEY, False),
-            ("Owed now (incl. penalty)", "O", MONEY, True),
-            ("Received to date", "P", MONEY, False),
-            ("Still outstanding", "Q", MONEY, True),
-            ("Profit", "R", MONEY, True),
-            ("Status", "S", None, True),
-        ]
-        for label, col, fmt, bold in fields:
-            lc = bs.cell(row=br, column=1, value=label)
-            lc.font = f(10, bold=bold, color="5A6B7D")
-            lc.border = UNDER
-            lc.alignment = Alignment(vertical="top")
-            for k, loan in enumerate(loans):
-                srow = rows_for[loan["id"]]
-                if col is None:
-                    value, color = loan.get("contract_ref") or "Not on file", BLUE
-                elif col == "deadline":
-                    # A hard backstop communicated to the borrower beyond the ordinary due date.
-                    # PRAIA had one; dropping it lost the only date that showed the deal was on
-                    # its last extension.
-                    value, color = d(loan.get("final_deadline")) or "None set", BLUE
-                else:
-                    value, color = f"=IF('Loan book'!{col}{srow}=\"\",\"\",'Loan book'!{col}{srow})", GREEN
-                cell = bs.cell(row=br, column=2 + k, value=value)
-                cell.font = f(10, bold=bold, color=color)
-                cell.border = UNDER
-                cell.alignment = Alignment(vertical="top", wrap_text=col is None)
-                if fmt and not (col == "deadline" and isinstance(value, str)):
-                    cell.number_format = fmt
+        # ---- position, one row per loan, pulled from the front sheet so the two never disagree
+        br = section(bs, br, "POSITION", 7)
+        br = header_row(bs, br, ["Loan", "Lent", "Total due", "Received", "Still owed", "Profit", "Status"])
+        for loan in loans:
+            srow = rows_for[loan["id"]]
+            bs.cell(row=br, column=1, value=f"Loan #{seq[loan['id']]}").font = f(10)
+            m = bs.cell(row=br, column=2, value=i(loan["principal"])); m.font = f(10, color=BLUE); m.number_format = MONEY
+            m = bs.cell(row=br, column=3, value=i(loan["total_due"])); m.font = f(10, color=BLUE); m.number_format = MONEY
+            for col, src in ((4, "H"), (5, "I"), (6, "J")):
+                cell = bs.cell(row=br, column=col, value=f"='{FRONT}'!{src}{srow}")
+                cell.font = f(10, color=GREEN, bold=col in (5, 6)); cell.number_format = MONEY
+            st = bs.cell(row=br, column=7, value=f"='{FRONT}'!F{srow}")
+            st.font = f(10, color=GREEN, bold=True)
             br += 1
         br += 1
 
-        # ---- what the fees are actually made of
-        br = section(bs, br, "WHAT THE FEES ARE MADE OF", ncol)
-        br = header_row(bs, br, ["Loan", "Charge", "Amount"] + [""] * (ncol - 3 if ncol > 3 else 0))
-        for loan in loans:
-            for fee in (loan.get("fees") or []):
-                bs.cell(row=br, column=1, value=f"Loan #{seq[loan['id']]}").font = f(10)
-                bs.cell(row=br, column=2, value=fee["label"]).font = f(10)
-                a = bs.cell(row=br, column=3, value=i(fee["amount"]))
-                a.font = f(10, color=BLUE)
-                a.number_format = MONEY
-                br += 1
-        bs.column_dimensions["C"].width = 16
-        br += 1
-
-        # ---- how it actually went
+        # ---- how it went
         history = [(loan, e) for loan in loans for e in (loan.get("repayment_history") or [])]
         if history:
             history.sort(key=lambda t: (t[1]["date"], seq[t[0]["id"]]))
-            br = section(bs, br, "HOW IT WENT", ncol)
+            br = section(bs, br, "HOW IT WENT", 7)
             br = header_row(bs, br, ["Date", "What happened", "Detail"])
+            bs.column_dimensions["C"].width = 92
             for loan, e in history:
-                dc = bs.cell(row=br, column=1, value=d(e["date"]))
-                dc.font = f(10)
-                dc.number_format = DATEF
+                dc = bs.cell(row=br, column=1, value=d(e["date"])); dc.font = f(10); dc.number_format = DATEF
                 dc.alignment = Alignment(vertical="top")
                 label = EVENT_LABEL.get(e["type"], e["type"])
                 if len(loans) > 1:
                     label = f"{label} (loan #{seq[loan['id']]})"
                 tc = bs.cell(row=br, column=2, value=label)
                 tc.font = f(10, bold=e["type"] in ("broken_promise", "full_payment"),
-                            color="B3261E" if e["type"] == "broken_promise" else INK)
+                            color=DANGER_FG if e["type"] == "broken_promise" else INK)
                 tc.alignment = Alignment(vertical="top")
                 xc = bs.cell(row=br, column=3, value=for_export(e["description"]))
-                xc.font = f(10)
-                xc.alignment = Alignment(wrap_text=True, vertical="top")
+                xc.font = f(10); xc.alignment = Alignment(wrap_text=True, vertical="top")
                 bs.row_dimensions[br].height = 28
                 br += 1
-            bs.column_dimensions["C"].width = 90
             br += 1
 
         # ---- paperwork
         docs = [(loan, doc) for loan in loans for doc in (loan.get("documents") or [])]
         if docs:
-            br = section(bs, br, "PAPERWORK ON FILE", ncol)
+            br = section(bs, br, "PAPERWORK ON FILE", 7)
             br = header_row(bs, br, ["Loan", "Document", "File"])
-            bs.column_dimensions["B"].width = max(bs.column_dimensions["B"].width or 30, 46)
+            bs.column_dimensions["B"].width = max(bs.column_dimensions["B"].width or 22, 40)
+            bs.column_dimensions["C"].width = 40
             for loan, doc in docs:
                 bs.cell(row=br, column=1, value=f"Loan #{seq[loan['id']]}").font = f(10)
                 bs.cell(row=br, column=2, value=doc["label"]).font = f(10)
-                bs.cell(row=br, column=3, value=doc["path"]).font = f(10, color="5A6B7D")
+                bs.cell(row=br, column=3, value=doc["path"]).font = f(10, color=MUTED)
                 br += 1
             br += 1
 
         # ---- notes
-        notes = [(loan, n) for loan in loans for n in (loan.get("notes") or [])]
+        notes = [(loan, note) for loan in loans for note in (loan.get("notes") or [])]
         if notes:
-            br = section(bs, br, "NOTES", ncol)
+            br = section(bs, br, "NOTES", 7)
             for loan, note in notes:
                 prefix = f"Loan #{seq[loan['id']]}: " if len(loans) > 1 else ""
-                note = redact_note(note)
-                nc = bs.cell(row=br, column=1, value=prefix + note)
-                nc.font = f(10)
-                nc.alignment = Alignment(wrap_text=True, vertical="top")
-                bs.merge_cells(start_row=br, start_column=1, end_row=br, end_column=max(3, ncol))
-                bs.row_dimensions[br].height = 14 * (1 + len(note) // 110)
+                text = prefix + redact_note(note)
+                nc = bs.cell(row=br, column=1, value=text)
+                nc.font = f(10); nc.alignment = Alignment(wrap_text=True, vertical="top")
+                bs.merge_cells(start_row=br, start_column=1, end_row=br, end_column=7)
+                bs.row_dimensions[br].height = 14 * (1 + len(text) // 118)
                 br += 1
 
     # ======================================================= not funded
@@ -531,24 +529,17 @@ def build(data_path, out_path, as_of):
         nr = title(ns, 1, "CONSIDERED BUT NOT FUNDED")
         c = ns.cell(row=nr, column=1, value="Deals that went through underwriting without money ever leaving. "
                                             "No principal, no fees, no exposure.")
-        c.font = f(10, italic=True, color="5A6B7D")
+        c.font = f(10, italic=True, color=MUTED)
         nr += 2
         for entry in considered:
             nr = section(ns, nr, (entry.get("borrower") or entry.get("label") or entry["id"]).upper(), 2)
             nr = label_value(ns, nr, "Contact", entry.get("contact") or "Not on file")
             nr = label_value(ns, nr, "Amount discussed", i(entry.get("principal")), MONEY)
-            nr = label_value(ns, nr, "Fees discussed",
-                             sum(i(x["amount"]) for x in (entry.get("fees") or [])), MONEY)
-            nr = label_value(ns, nr, "Term (months)", entry.get("term_months"))
-            nr = label_value(ns, nr, "Deferral (months)", entry.get("deferral_months"))
             nr = label_value(ns, nr, "Outcome", entry.get("status") or "Not proceeding", color=BLACK)
             nr = label_value(ns, nr, "Declined on", d(entry.get("declined_on")), DATEF)
-            for doc in (entry.get("documents") or []):
-                nr = label_value(ns, nr, doc["label"], doc["path"], color="5A6B7D")
             for note in (entry.get("notes") or []):
                 nc = ns.cell(row=nr, column=1, value=redact_note(note))
-                nc.font = f(10)
-                nc.alignment = Alignment(wrap_text=True, vertical="top")
+                nc.font = f(10); nc.alignment = Alignment(wrap_text=True, vertical="top")
                 ns.merge_cells(start_row=nr, start_column=1, end_row=nr, end_column=2)
                 ns.row_dimensions[nr].height = 14 * (1 + len(note) // 110)
                 nr += 1
@@ -560,15 +551,14 @@ def build(data_path, out_path, as_of):
     ms.column_dimensions["A"].width = 112
     mr = title(ms, 1, "HOW TO READ THIS WORKBOOK")
     mr += 1
-    for heading, body in method_text(AS_OF.replace("$", "")):
+    for heading, body in method_text(ASOF.replace("$", "")):
         hc = ms.cell(row=mr, column=1, value=heading)
         hc.font = f(11, bold=True, color=HEAD)
         mr += 1
         for line in body:
             bc = ms.cell(row=mr, column=1, value=line)
-            bc.font = f(10)
-            bc.alignment = Alignment(wrap_text=True, vertical="top")
-            ms.row_dimensions[mr].height = 14 * (1 + len(line) // 105)
+            bc.font = f(10); bc.alignment = Alignment(wrap_text=True, vertical="top")
+            ms.row_dimensions[mr].height = 14 * (1 + len(line) // 108)
             mr += 1
         mr += 1
 
@@ -577,51 +567,49 @@ def build(data_path, out_path, as_of):
 
 
 def method_text(as_of_cell):
-    """The as-of cell address is derived, never hardcoded: it moved once already."""
     return [
-        ("Sheets", [
-            "Loan book: every loan on one row. Start here.",
-            "One sheet per borrower: the full file on that person, who they are, the terms of each "
-            "loan they took, what the fees were made of, every promise and payment, and the paperwork held.",
+        ("What this is", [
+            "Loan status: every loan on one line — what it was, where it stands, whether it is repaid, and "
+            "whether the borrower is on the 12-month revolving facility. Start here.",
+            "One sheet per borrower: the full file — who they are, each loan's position, the story of how it "
+            "went, the paperwork held, and the notes.",
             "Considered, not funded: deals underwritten where no money ever moved.",
         ]),
         ("The one cell you can change", [
-            f"Loan book, cell {as_of_cell}, the yellow one, is the date everything is measured at. Change it and "
-            "every open loan's days late and late penalty re-accrue. Nothing else should be edited.",
+            f"Loan status, cell {as_of_cell}, the yellow one, is the date everything is measured at. Change it and "
+            "every open loan's status, amount owed and late penalty re-accrue. Nothing else should be edited.",
         ]),
-        ("Colours", [
-            "Blue figures were typed in from the signed loan files: principal, total due, the dates, "
-            "the penalty rate, and cash actually received.",
-            "Black figures are calculated by the sheet from those.",
-            "Green figures on a borrower sheet are pulled from the Loan book sheet, so the two can never disagree.",
+        ("The 12-month revolving facility", [
+            "A renewable credit line: a fixed amount released, repaid in full about a month later, and then "
+            "automatically re-opened for the next cycle for up to a year, unless Muthi declines it.",
+            "A borrower shows 'Yes' once they have signed the renewable convention. To date only Marie Andrea "
+            "Koizan is on it (cycle 1, signed 25 September 2026). Putting another borrower on it is a per-borrower "
+            "decision; everyone else shows 'Not enrolled'.",
         ]),
-        ("How the late penalty works", [
-            "Each loan carries its own rate and its own period, both shown on its row. Most are 1% per "
-            "started week on the total due; a few are 1% per day by separate agreement with the borrower.",
-            "It is charged on the total due, not on the principal, and it is simple rather than compounded: "
-            "ten days late at 1% per day is 10% of the total due, not 1.01 to the tenth power.",
-            "Accrual runs from the due date to the date of repayment, or to the As of date while a loan is still open.",
-            "Marie Andrea Koizan's renewable facility is the one place this understates the contract. "
-            "Article 7 of the convention she signed on 25 September 2026 sets 1% per day compounded daily. "
-            "The figure here is 1% per day simple, so once she is more than a day late the real contractual "
-            "amount is higher than what this workbook shows. See the note on her sheet.",
+        ("Status and money", [
+            "Status: Repaid, OVERDUE (past due), Due soon (within 7 days) or On track.",
+            "Still owed is what is left to collect, late penalty included, and is zero once a loan is repaid. "
+            "Received is the cash in. Profit is cash collected less principal for repaid loans, and amount owed "
+            "today less principal for open ones — expected, not yet banked.",
+            "Colours: blue figures are the signed loan terms; black are calculated by the sheet; green on a "
+            "borrower sheet is pulled from Loan status, so the two can never disagree.",
         ]),
-        ("Reading the totals", [
-        "The TOTAL row uses SUBTOTAL, so it follows the filter: filter the table to one borrower and "
-        "the totals describe that borrower. The PORTFOLIO RECAP below always describes the whole book.",
-        "Owed now is deliberately not totalled. Adding cash already banked to cash still owed gives a "
-        "number that means nothing; Total still owed to us in the recap is the figure to read.",
-        "Still owed is split into what is overdue and collectable today and what is simply not due yet. "
-        "Marie Andrea Koizan's 350,000 is not due until 25 October and is not a collection problem.",
-    ]),
-    ("Profit", [
-            "For a repaid loan, profit is the cash actually collected less the principal released. It therefore "
-            "includes any late penalty collected, which is why PRAIA shows 1,680,000 and not the 1,250,000 contracted.",
-            "For an open loan it is the amount owed today, penalty included, less the principal. It is expected, not banked.",
+        ("The late penalty", [
+            "1% per started week on the total due (not the principal), simple, never compounded. A few loans are "
+            "1% per day by separate agreement.",
+            "Jean Philippe was given one week after his 25 September due date to repay at the weekly 1%; from "
+            "2 October 2026 his penalty is 1% per day. The grace week is locked at one weekly step (2,000) and "
+            "the daily rate runs from 2 October — the sheet accrues both correctly off the As-of date.",
+            "Marie Andrea's renewable convention sets 1% per day COMPOUNDED daily (Article 7). This workbook "
+            "carries it as 1% per day simple, so once she is more than a day late the real contractual figure is "
+            "a little higher than shown. She is not currently late.",
         ]),
         ("What is deliberately not in here", [
-            "Muthi's own cash position and working capital, and the analyst fee Muthi's own analysts take on each "
-            "loan's profit. Neither is part of the loan book; both can be added on request.",
+            "Muthi's own cash position and working capital, and the analyst fee Muthi takes on each loan's profit "
+            "— neither is part of the loan book; both can be added on request.",
+            "Borrowers' identity-document particulars: where a note held an ID number, date and place of birth or "
+            "home address, it is replaced by the fact that identity was verified. The documents stay in Muthi's "
+            "loan book.",
         ]),
     ]
 
