@@ -263,6 +263,15 @@ def build(data_path, out_path, as_of):
     # Borrower-level enrolment on the 12-month revolving facility.
     enrolled = {b: any(is_revolving_loan(l) for l in loans) for b, loans in by_borrower.items()}
 
+    # Re-lent cycles: a borrower's later loan funded by an earlier one they have already repaid (the
+    # revolving facility, or simply a second loan taken after the first came back). Its principal is
+    # the same money going out again, so it must not be counted a second time in the capital totals.
+    recycled_ids = set()
+    for loans in by_borrower.values():
+        for idx, loan in enumerate(loans):
+            if any(e.get("repaid_on") for e in loans[:idx]):
+                recycled_ids.add(loan["id"])
+
     wb = Workbook()
 
     # ============================================================ front sheet
@@ -313,6 +322,8 @@ def build(data_path, out_path, as_of):
             tags.append(f"loan #{seq[loan['id']]}")
         if loan.get("related_party"):
             tags.append("related party")
+        if loan["id"] in recycled_ids:
+            tags.append("re-lent")
 
         due = xldate(loan["due_on"])
         put(1, n, align="center")
@@ -354,10 +365,16 @@ def build(data_path, out_path, as_of):
         cell = ws.cell(row=total_row, column=col)
         cell.border = OVER
         cell.font = f(10, bold=True)
-    ws.cell(row=total_row, column=2, value="TOTAL (follows the filter)").font = f(10, bold=True)
+    ws.cell(row=total_row, column=2, value="TOTAL").font = f(10, bold=True)
+    # Principal counts a re-lent cycle once: sum only the rows that put NEW money out, so the same
+    # capital going back out on a revolving facility is not double-counted. Everything else is a
+    # straight column total.
+    lent_cells = [f"D{rows_for[l['id']]}" for l in disbursed if l["id"] not in recycled_ids]
+    lent_total = f"=SUM({','.join(lent_cells)})" if lent_cells else "=0"
     for col in (4, 5, 8, 9, 10):
         L = get_column_letter(col)
-        cell = ws.cell(row=total_row, column=col, value=f"=SUBTOTAL(109,{L}{first_data}:{L}{last_data})")
+        formula = lent_total if col == 4 else f"=SUBTOTAL(109,{L}{first_data}:{L}{last_data})"
+        cell = ws.cell(row=total_row, column=col, value=formula)
         cell.number_format = MONEY
         cell.font = f(10, bold=True)
         cell.border = OVER
@@ -371,7 +388,7 @@ def build(data_path, out_path, as_of):
         ("Repaid in full", f'=COUNTIF(F{first_data}:F{last_data},"Repaid")', DAYS),
         ("Still open", f'=COUNTA(B{first_data}:B{last_data})-COUNTIF(F{first_data}:F{last_data},"Repaid")', DAYS),
         ("", None, None),
-        ("Principal lent out", f"=SUM(D{first_data}:D{last_data})", MONEY),
+        ("Principal deployed (re-lends counted once)", lent_total, MONEY),
         ("Profit realised (repaid)", f'=SUMIF(F{first_data}:F{last_data},"Repaid",J{first_data}:J{last_data})', MONEY),
         ("Profit expected (open)", f'=SUMIF(F{first_data}:F{last_data},"<>Repaid",J{first_data}:J{last_data})', MONEY),
         ("", None, None),
@@ -400,6 +417,9 @@ def build(data_path, out_path, as_of):
 
     for line in (
         "Still owed on an overdue loan includes the late penalty accrued to the As-of date above.",
+        "Principal deployed counts a re-lent facility once (its later cycles are tagged 're-lent'), so the "
+        "same money going back out is not double-counted; each cycle's profit is still counted, since a fee "
+        "is earned every time.",
         "Profit is realised (cash collected less principal) for repaid loans, expected (amount owed today "
         "less principal) for open ones.",
         "Full terms, the fee breakdown, the story of each loan and the paperwork on file are on each "
