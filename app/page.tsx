@@ -39,7 +39,7 @@ export default async function HomePage() {
     {
       href: "/commissions",
       label: "Analyst Commissions",
-      blurb: "20% of profit to Louis and Emmanuel — paid and still to collect.",
+      blurb: "20% of profit on the loans Louis and Emmanuel referred — paid and still to collect.",
       figure: formatFCFA(payable),
       figureLabel: "still to collect",
       tone: payable > 0 ? "amber" : "ok",

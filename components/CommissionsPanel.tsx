@@ -29,7 +29,7 @@ export function CommissionsPanel({ commissions }: { commissions: CommissionRow[]
         <div>
           <p className="eyebrow text-[11px]">Analyst commissions</p>
           <p className="mt-1 text-sm text-[var(--slate-soft)]">
-            20% of the profit on every loan, to Louis and Emmanuel
+            20% of the profit on the loans Louis and Emmanuel referred
           </p>
         </div>
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">

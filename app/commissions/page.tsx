@@ -31,8 +31,9 @@ export default async function CommissionsPage() {
           <p className="eyebrow text-[11px]">Analyst fees</p>
           <h2 className="font-display text-2xl font-semibold text-[var(--ink)]">Analyst Commissions</h2>
           <p className="mt-2 max-w-2xl text-sm text-[var(--slate-soft)]">
-            20% of the profit on every loan, to Louis and Emmanuel. Payable is the part still with JP, who was advanced
-            the fees and settles afterwards — it is deliberately not a cash movement, so it stays out of the balances.
+            20% of the profit on the loans Louis and Emmanuel referred, to the two of them. Loans brought in through JP's
+            own network carry no analyst commission. Payable is the part still with JP, who was advanced the fees and
+            settles afterwards — it is deliberately not a cash movement, so it stays out of the balances.
           </p>
         </div>
 
