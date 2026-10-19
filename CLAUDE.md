@@ -46,13 +46,16 @@ deployment on purpose.
 The founder tracks these separately, because the business model is to keep re-lending the
 same principal and earn the fee each time. Gross principal deployed flatters that badly.
 
-- **Own money put in, as at 28 September 2026: 6,150,000 FCFA.** This is the agreed baseline
-  and the figure to quote. It is every principal disbursed to that date except Marie Andréa
-  Koizan's renewable cycle 1, which re-lent the 300,000 she had just repaid.
+- **Own money put in: 10,588,000 FCFA** (the figure to quote), as at 17 October 2026. The
+  baseline was 6,150,000 as at 28 September 2026 (every principal disbursed to that date except
+  Marie Andréa Koizan's renewable cycle 1, which re-lent the 300,000 she had just repaid); on
+  17 October 2026 the founder brought in 4,438,000 of fresh working capital, raising it to
+  10,588,000. `WORKING_CAPITAL_DEPOSITED` in lib/loans.ts holds this figure.
 - **New money** is capital the founders had to find. **Recycled money** is a disbursement
   funded by principal a borrower had already handed back.
 - From 28 September 2026 onward, every new disbursement is classified as one or the other
-  when it is recorded, and the running total of own money is carried forward from 6,150,000.
+  when it is recorded, and the running total of own money is carried forward (6,150,000 at that
+  date, 10,588,000 after the 17 October 2026 injection).
 - Gross principal deployed is a different number and should not be presented as money put in.
   At the baseline date it was 6,450,000.
 - A first-principles recomputation from disbursement and repayment dates gives 6,000,000 of

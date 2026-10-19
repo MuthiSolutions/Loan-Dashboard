@@ -126,8 +126,11 @@ export function getLoanState(loan: Loan, asOf: Date = new Date()): LoanState {
  * Marie Andréa Koizan's renewable cycle 1 re-lent the 300,000 she had just repaid, so it is
  * recycled money rather than new money the founders had to find. Raise this constant only when
  * they actually put fresh cash in, and record the date and amount in the commit message.
+ *
+ * 17 October 2026: the founder brought in 4,438,000 of fresh working capital (founder cash to
+ * 6,200,000), so the own-money baseline rises from 6,150,000 to 10,588,000.
  */
-export const WORKING_CAPITAL_DEPOSITED = 6_150_000;
+export const WORKING_CAPITAL_DEPOSITED = 10_588_000;
 
 /**
  * Which loan this is in a borrower's own sequence: their first is #1, their next #2.
