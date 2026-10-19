@@ -128,9 +128,13 @@ export function getLoanState(loan: Loan, asOf: Date = new Date()): LoanState {
  * they actually put fresh cash in, and record the date and amount in the commit message.
  *
  * 17 October 2026: the founder brought in 4,438,000 of fresh working capital (founder cash to
- * 6,200,000), so the own-money baseline rises from 6,150,000 to 10,588,000.
+ * 6,200,000), lifting the gross own-money figure from 6,150,000 to 10,588,000.
+ * 19 October 2026: 1,000,000 of the pooled cash is earmarked for October payroll, not lending
+ * (Louis 150,000, founder 550,000, assistant 100,000, Emmanuel 200,000), so the lending working
+ * capital is 10,588,000 - 1,000,000 = 9,588,000. This figure is money available to lend, net of
+ * amounts drawn for salaries out of the same pool.
  */
-export const WORKING_CAPITAL_DEPOSITED = 10_588_000;
+export const WORKING_CAPITAL_DEPOSITED = 9_588_000;
 
 /**
  * Which loan this is in a borrower's own sequence: their first is #1, their next #2.

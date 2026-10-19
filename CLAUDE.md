@@ -40,22 +40,34 @@ deployment on purpose.
   — no separate migration step between environments.
 - One-off data-fix/seed scripts live in `scripts/` and get committed (not deleted after
   running) so there's an audit trail of what changed and why.
+- **Mirror every live change to Notion.** After recording anything in the database (a payment,
+  disbursement, cash movement, capital event), reflect it in the Notion loan book so it stays a
+  living, transparent record: update the borrower's page figures (Reçu / Restant dû / Statut),
+  add a dated line under a "Suivi des paiements" section on that borrower's page, and keep cash
+  and capital events logged. The database is the source of truth; Notion mirrors it, kept in
+  lockstep within the same work session. Hub: the "Muthi Loan Book" Notion page
+  (3fc9d153-93d0-81cc-9009-e0699a5c16eb) holding the "Muthi — Loan Book (Prêts)" database
+  (collection 074af23a-bc76-46c8-925c-1fac9c83cf7a), plus the "Muthi CRM" pipeline.
 
 ## Capital: new money versus recycled money
 
 The founder tracks these separately, because the business model is to keep re-lending the
 same principal and earn the fee each time. Gross principal deployed flatters that badly.
 
-- **Own money put in: 10,588,000 FCFA** (the figure to quote), as at 17 October 2026. The
+- **Lending working capital: 9,588,000 FCFA** (the figure to quote), as at 19 October 2026. The
   baseline was 6,150,000 as at 28 September 2026 (every principal disbursed to that date except
-  Marie Andréa Koizan's renewable cycle 1, which re-lent the 300,000 she had just repaid); on
-  17 October 2026 the founder brought in 4,438,000 of fresh working capital, raising it to
-  10,588,000. `WORKING_CAPITAL_DEPOSITED` in lib/loans.ts holds this figure.
+  Marie Andréa Koizan's renewable cycle 1, which re-lent the 300,000 she had just repaid); the
+  founder's 17 October 2026 injection of 4,438,000 lifted the gross own-money pool to 10,588,000.
+  Of that pool, 1,000,000 is earmarked for October payroll and will not be lent out (Louis
+  150,000, founder 550,000, assistant 100,000, Emmanuel 200,000), so lending working capital is
+  10,588,000 − 1,000,000 = 9,588,000. `WORKING_CAPITAL_DEPOSITED` in lib/loans.ts holds this
+  figure (lending capital, net of payroll drawn from the same pool).
 - **New money** is capital the founders had to find. **Recycled money** is a disbursement
   funded by principal a borrower had already handed back.
 - From 28 September 2026 onward, every new disbursement is classified as one or the other
-  when it is recorded, and the running total of own money is carried forward (6,150,000 at that
-  date, 10,588,000 after the 17 October 2026 injection).
+  when it is recorded, and the running total of own money is carried forward (6,150,000 at 28 Sep;
+  10,588,000 gross after the 17 October 2026 injection; 9,588,000 net of the 1,000,000 October
+  payroll earmarked out of the same pool).
 - Gross principal deployed is a different number and should not be presented as money put in.
   At the baseline date it was 6,450,000.
 - A first-principles recomputation from disbursement and repayment dates gives 6,000,000 of
