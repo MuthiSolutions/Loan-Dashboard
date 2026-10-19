@@ -54,20 +54,26 @@ deployment on purpose.
 The founder tracks these separately, because the business model is to keep re-lending the
 same principal and earn the fee each time. Gross principal deployed flatters that badly.
 
-- **Lending working capital: 9,588,000 FCFA** (the figure to quote), as at 19 October 2026. The
+- **Lending working capital: 9,538,000 FCFA** (the figure to quote), as at 19 October 2026. The
   baseline was 6,150,000 as at 28 September 2026 (every principal disbursed to that date except
   Marie Andréa Koizan's renewable cycle 1, which re-lent the 300,000 she had just repaid); the
-  founder's 17 October 2026 injection of 4,438,000 lifted the gross own-money pool to 10,588,000.
-  Of that pool, 1,000,000 is earmarked for October payroll and will not be lent out (Louis
-  150,000, founder 550,000, assistant 100,000, Emmanuel 200,000), so lending working capital is
-  10,588,000 − 1,000,000 = 9,588,000. `WORKING_CAPITAL_DEPOSITED` in lib/loans.ts holds this
-  figure (lending capital, net of payroll drawn from the same pool).
+  founder's 17 October 2026 injection of 4,388,000 (sized to bring founder cash to 6,200,000)
+  lifted the gross own-money pool to 10,538,000. Of that pool, 1,000,000 is earmarked for October
+  payroll and will not be lent out (Louis 150,000, founder 550,000, assistant 100,000, Emmanuel
+  200,000), so lending working capital is 10,538,000 − 1,000,000 = 9,538,000.
+  `WORKING_CAPITAL_DEPOSITED` in lib/loans.ts holds this figure (lending capital, net of payroll
+  drawn from the same pool).
 - **New money** is capital the founders had to find. **Recycled money** is a disbursement
   funded by principal a borrower had already handed back.
 - From 28 September 2026 onward, every new disbursement is classified as one or the other
   when it is recorded, and the running total of own money is carried forward (6,150,000 at 28 Sep;
-  10,588,000 gross after the 17 October 2026 injection; 9,588,000 net of the 1,000,000 October
+  10,538,000 gross after the 17 October 2026 injection; 9,538,000 net of the 1,000,000 October
   payroll earmarked out of the same pool).
+- **Salaries and advances drawn from the pool reduce BOTH sides.** Cash for salaries and staff
+  advances comes out of the same pot as lending capital, so each one is recorded twice over: as a
+  founder-cash outflow (a `cash_movements` row) AND as a reduction of `WORKING_CAPITAL_DEPOSITED`,
+  because that money will not be lent out. Keep the two in step whenever payroll is paid from the
+  pool.
 - Gross principal deployed is a different number and should not be presented as money put in.
   At the baseline date it was 6,450,000.
 - A first-principles recomputation from disbursement and repayment dates gives 6,000,000 of
