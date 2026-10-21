@@ -55,11 +55,13 @@ export interface Loan extends BorrowerProfile {
   latePenaltyPeriodAfter?: "day" | "week";
   /**
    * The authoritative gross amount owed at the cadence-switch date, as agreed with the borrower
-   * (e.g. the figure communicated on the day of a partial payment). When set, formulaAmountDue
-   * compounds phase 2 on this value instead of the formula-derived phase 1 result, anchoring the
-   * calculation to the field-agreed figure rather than a computed one.
+   * (e.g. the figure communicated on the day of a partial payment). When set, phase 2 compounds on
+   * the balance still OUTSTANDING at the switch — this agreed gross minus whatever had already been
+   * paid by then — not on the full gross, which would re-charge money already collected. It anchors
+   * the calculation to the field-agreed figure rather than the formula's own phase-1 result.
    *
-   * Ane Jean Philippe: 228,000 FCFA (agreed 15 Oct 2026; 200,000 received that day, 28,000 left).
+   * Ane Jean Philippe: 228,000 FCFA agreed 15 Oct 2026; 200,000 received that day, so 28,000 is the
+   * outstanding balance that compounds at 1%/day (28,000 * 1.01^n).
    */
   penaltySwitchBase?: number | null;
   contractRef: string;

@@ -94,18 +94,29 @@ export function penaltyBreakdown(loan: Loan, asOf: Date = new Date()): PenaltyBr
  * (2,020/day), not on the original 200,000. Without a switch, phase2Units is 0 and this reduces to
  * the plain totalDue * (1 + rate * units).
  *
- * penaltySwitchBase: when set, this is the authoritative gross amount owed at the moment of the
- * cadence switch (e.g. the figure communicated to the borrower on the day of a partial payment).
- * Phase 2 compounds on this value instead of the formula-derived phase 1 result, anchoring the
- * calculation to the agreed field figure rather than a computed one.
+ * penaltySwitchBase anchor
+ * ------------------------
+ * Some loans carry a field-agreed gross figure at the switch date (penaltySwitchBase): the
+ * authoritative balance the borrower was actually quoted, which can differ from the formula's own
+ * phase-1 result. When that anchor is present, phase 2 compounds daily on the balance STILL
+ * OUTSTANDING at the switch — the agreed gross minus whatever had already been paid by then — NOT on
+ * the full agreed gross, which would re-charge money that has already been collected.
+ *
+ * Gross today = amount already paid + (outstanding-at-switch) * (1 + rate)^phase2Units.
+ * computeAmountDue nets the paid portion out again, so "still owed" lands at exactly
+ * outstanding-at-switch grown at the daily rate.
+ *
+ * Ane Jean Philippe: agreed 228,000 at 15 Oct 2026, 200,000 received that day → 28,000 outstanding,
+ * compounding at 1%/day (28,000 * 1.01^n). Day 6: 29,723 still owed, 229,723 gross, +79,723 profit.
  */
 export function formulaAmountDue(loan: Loan, asOf: Date = new Date()): number {
   const { phase1Units, phase2Units, switched } = penaltyBreakdown(loan, asOf);
   const rate = loan.latePenaltyRatePerWeek;
 
   if (switched && loan.penaltySwitchBase != null && phase2Units > 0) {
-    // Phase 2 compounds on the agreed switch-date balance, not the formula result.
-    return Math.round(loan.penaltySwitchBase * Math.pow(1 + rate, phase2Units));
+    const paid = loan.amountPaid ?? 0;
+    const outstandingAtSwitch = Math.max(0, loan.penaltySwitchBase - paid);
+    return paid + Math.round(outstandingAtSwitch * Math.pow(1 + rate, phase2Units));
   }
 
   const afterPhase1 = loan.totalDue * (1 + rate * phase1Units);
@@ -222,7 +233,7 @@ export function recycledLoanIds(loans: Loan[]): Set<string> {
   const recycled = new Set<string>();
   for (const [, list] of byBorrower) {
     const ordered = [...list].sort(
-      (a, b) => (a.disbursedOn ?? a.dueOn ?? "") .localeCompare(b.disbursedOn ?? b.dueOn ?? "") || a.id.localeCompare(b.id)
+      (a, b) => (a.disbursedOn ?? a.dueOn ?? "").localeCompare(b.disbursedOn ?? b.dueOn ?? "") || a.id.localeCompare(b.id)
     );
     ordered.forEach((loan, i) => {
       if (ordered.slice(0, i).some((earlier) => earlier.repaidOn)) recycled.add(loan.id);
