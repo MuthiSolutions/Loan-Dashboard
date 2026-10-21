@@ -53,6 +53,15 @@ export interface Loan extends BorrowerProfile {
    */
   latePenaltySwitchOn?: string; // ISO date
   latePenaltyPeriodAfter?: "day" | "week";
+  /**
+   * The authoritative gross amount owed at the cadence-switch date, as agreed with the borrower
+   * (e.g. the figure communicated on the day of a partial payment). When set, formulaAmountDue
+   * compounds phase 2 on this value instead of the formula-derived phase 1 result, anchoring the
+   * calculation to the field-agreed figure rather than a computed one.
+   *
+   * Ane Jean Philippe: 228,000 FCFA (agreed 15 Oct 2026; 200,000 received that day, 28,000 left).
+   */
+  penaltySwitchBase?: number | null;
   contractRef: string;
   /** Loan to a Muthi associate/insider rather than an outside client — flagged for governance visibility. */
   relatedParty?: boolean;

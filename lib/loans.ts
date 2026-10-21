@@ -93,10 +93,21 @@ export function penaltyBreakdown(loan: Loan, asOf: Date = new Date()): PenaltyBr
  * base from 200,000 to 202,000, and the 1% per day from 2 October is charged on that 202,000
  * (2,020/day), not on the original 200,000. Without a switch, phase2Units is 0 and this reduces to
  * the plain totalDue * (1 + rate * units).
+ *
+ * penaltySwitchBase: when set, this is the authoritative gross amount owed at the moment of the
+ * cadence switch (e.g. the figure communicated to the borrower on the day of a partial payment).
+ * Phase 2 compounds on this value instead of the formula-derived phase 1 result, anchoring the
+ * calculation to the agreed field figure rather than a computed one.
  */
 export function formulaAmountDue(loan: Loan, asOf: Date = new Date()): number {
-  const { phase1Units, phase2Units } = penaltyBreakdown(loan, asOf);
+  const { phase1Units, phase2Units, switched } = penaltyBreakdown(loan, asOf);
   const rate = loan.latePenaltyRatePerWeek;
+
+  if (switched && loan.penaltySwitchBase != null && phase2Units > 0) {
+    // Phase 2 compounds on the agreed switch-date balance, not the formula result.
+    return Math.round(loan.penaltySwitchBase * Math.pow(1 + rate, phase2Units));
+  }
+
   const afterPhase1 = loan.totalDue * (1 + rate * phase1Units);
   return Math.round(afterPhase1 * (1 + rate * phase2Units));
 }
@@ -211,7 +222,7 @@ export function recycledLoanIds(loans: Loan[]): Set<string> {
   const recycled = new Set<string>();
   for (const [, list] of byBorrower) {
     const ordered = [...list].sort(
-      (a, b) => (a.disbursedOn ?? a.dueOn ?? "").localeCompare(b.disbursedOn ?? b.dueOn ?? "") || a.id.localeCompare(b.id)
+      (a, b) => (a.disbursedOn ?? a.dueOn ?? "") .localeCompare(b.disbursedOn ?? b.dueOn ?? "") || a.id.localeCompare(b.id)
     );
     ordered.forEach((loan, i) => {
       if (ordered.slice(0, i).some((earlier) => earlier.repaidOn)) recycled.add(loan.id);
