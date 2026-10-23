@@ -10,17 +10,19 @@ export interface CommissionRow extends Commission {
 /**
  * The analyst fee Louis and Emmanuel take on each loan's profit.
  *
- * Payable is listed before paid and totalled separately, because payable is the part that
- * still has to be collected: those fees were advanced to JP directly and come back to us
- * afterwards. A payable commission is not a cash movement, so it is deliberately absent from
- * the cash position above — showing it there would count money that has not moved.
+ * Listed payable first (owed now, still to collect), then accruing (building up on loans still
+ * open), then paid, and each is totalled separately. Payable and accruing fees were advanced to JP
+ * and come back to us afterwards, so neither is a cash movement — they are deliberately absent from
+ * the cash position above, which would otherwise count money that has not moved.
  */
 export function CommissionsPanel({ commissions }: { commissions: CommissionRow[] }) {
   if (commissions.length === 0) return null;
 
   const payable = commissions.filter((c) => c.status === "payable");
+  const accruing = commissions.filter((c) => c.status === "accruing");
   const paid = commissions.filter((c) => c.status === "paid");
   const payableTotal = payable.reduce((sum, c) => sum + c.amount, 0);
+  const accruingTotal = accruing.reduce((sum, c) => sum + c.amount, 0);
   const paidTotal = paid.reduce((sum, c) => sum + c.amount, 0);
 
   return (
@@ -34,6 +36,10 @@ export function CommissionsPanel({ commissions }: { commissions: CommissionRow[]
         </div>
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
           <span className="text-xs text-[var(--slate-soft)]">
+            Accruing{" "}
+            <span className="tabular text-base font-semibold text-[var(--slate)]">{formatFCFA(accruingTotal)}</span>
+          </span>
+          <span className="text-xs text-[var(--slate-soft)]">
             Still to collect{" "}
             <span className="tabular text-base font-semibold text-[var(--amber)]">{formatFCFA(payableTotal)}</span>
           </span>
@@ -45,7 +51,7 @@ export function CommissionsPanel({ commissions }: { commissions: CommissionRow[]
       </div>
 
       <ul className="mt-5 divide-y divide-[var(--cream-2)]">
-        {[...payable, ...paid].map((c) => (
+        {[...payable, ...accruing, ...paid].map((c) => (
           <li key={c.id} className="flex items-baseline justify-between gap-x-4 py-3">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -59,10 +65,16 @@ export function CommissionsPanel({ commissions }: { commissions: CommissionRow[]
                   className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                     c.status === "paid"
                       ? "bg-[var(--ok-soft)] text-[var(--ok)]"
-                      : "bg-[#f4e6c8] text-[var(--amber)]"
+                      : c.status === "payable"
+                      ? "bg-[#f4e6c8] text-[var(--amber)]"
+                      : "bg-[var(--cream-2)] text-[var(--slate)]"
                   }`}
                 >
-                  {c.status === "paid" ? `Paid${c.paidOn ? ` ${formatDate(c.paidOn)}` : ""}` : "Payable"}
+                  {c.status === "paid"
+                    ? `Paid${c.paidOn ? ` ${formatDate(c.paidOn)}` : ""}`
+                    : c.status === "payable"
+                    ? "Payable"
+                    : "Accruing"}
                 </span>
               </div>
               <p className="mt-0.5 text-xs text-[var(--slate-soft)]">

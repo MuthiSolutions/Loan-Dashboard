@@ -52,7 +52,7 @@ export default async function DashboardPage() {
           <SummaryCard
             label="Cash on hand"
             value={formatFCFA(totalDeployable)}
-            sub={`${formatFCFA(cashPosition.inBank)} bank + ${formatFCFA(cashPosition.heldByFounder)} with founder`}
+            sub={`${formatFCFA(cashPosition.inBank)} bank + ${formatFCFA(cashPosition.heldByFounder)} in office box`}
             tone="azure"
           />
           <SummaryCard

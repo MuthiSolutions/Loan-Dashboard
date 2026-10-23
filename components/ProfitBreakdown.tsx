@@ -16,7 +16,7 @@ export function ProfitBreakdown({ principal, fees, fallbackFeeLabel, contractedT
   const liveFees = liveTotal - principal;
   const lateAccrual = liveFees - contractedFees;
   const effectiveRate = principal > 0 ? (contractedFees / principal) * 100 : 0;
-  const itemized = fees.length > 0 ? fees : [{ label: fallbackFeeLabel, amount: contractedFees }];
+  const itemized = Array.isArray(fees) && fees.length > 0 ? fees : [{ label: fallbackFeeLabel, amount: contractedFees }];
 
   return (
     <div className="mt-5 rounded-xl bg-[var(--ok-soft)]/40 p-4">

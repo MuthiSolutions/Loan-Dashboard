@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS commissions (
   basis_profit BIGINT NOT NULL, -- the profit figure the rate was applied to
   rate NUMERIC,                 -- e.g. 0.20; NULL where the amount was agreed outright
   amount BIGINT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('paid', 'payable')),
+  status TEXT NOT NULL CHECK (status IN ('accruing', 'payable', 'paid')),
   paid_on DATE,
   notes JSONB NOT NULL DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

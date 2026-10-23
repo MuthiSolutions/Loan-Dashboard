@@ -138,10 +138,11 @@ export interface CashPosition {
 /**
  * The analyst fee Louis and Emmanuel take on a loan's profit, 20% by standing agreement.
  *
- * "paid" means the money has reached the analysts and a matching outflow exists in
- * cash_movements. "payable" means it is owed but still with JP, who was advanced the fees
- * and settles afterwards — so a payable commission is NOT yet a cash movement and must not
- * be netted against the balances.
+ * Lifecycle: "accruing" while the loan is still open (the fee is building up on a profit that
+ * has not been collected yet — not owed, not a cash movement); "payable" once the loan is fully
+ * repaid (owed to the analysts, but still with JP, who was advanced the fees and settles
+ * afterwards — so still NOT a cash movement and not netted against the balances); "paid" once the
+ * money has reached the analysts and a matching outflow exists in cash_movements.
  */
 export interface Commission {
   id: number;
@@ -152,7 +153,7 @@ export interface Commission {
   /** e.g. 0.2; undefined where the amount was agreed outright rather than computed. */
   rate?: number;
   amount: number;
-  status: "paid" | "payable";
+  status: "accruing" | "paid" | "payable";
   paidOn?: string; // ISO date
   notes: string[];
 }

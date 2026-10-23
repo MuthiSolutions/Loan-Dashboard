@@ -155,8 +155,10 @@ export function getLoanState(loan: Loan, asOf: Date = new Date()): LoanState {
  * (Louis 150,000, founder 550,000, assistant 100,000, Emmanuel 200,000), so the lending working
  * capital is 10,538,000 - 1,000,000 = 9,538,000. This figure is money available to lend, net of
  * amounts drawn for salaries out of the same pool.
+ * 23 October 2026: JP Bénie withdrew 1,000,000 from the office box for personal use; that money
+ * leaves the lending pool too, so working capital is 9,538,000 - 1,000,000 = 8,538,000.
  */
-export const WORKING_CAPITAL_DEPOSITED = 9_538_000;
+export const WORKING_CAPITAL_DEPOSITED = 8_538_000;
 
 /**
  * Which loan this is in a borrower's own sequence: their first is #1, their next #2.
@@ -273,6 +275,19 @@ export function loansSortedByUrgency(loans: Loan[], asOf: Date = new Date()): Lo
 
 export function formatFCFA(amount: number): string {
   return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(amount)} FCFA`;
+}
+
+/**
+ * Coerce a stored note to display text. Notes are meant to be plain strings; this guards against a
+ * malformed note (e.g. an object `{ text: "..." }` left by a bad write) that React cannot render —
+ * such a note once crashed the whole /loan-book page. Rendering code should route notes through here.
+ */
+export function noteText(note: unknown): string {
+  if (typeof note === "string") return note;
+  if (note && typeof note === "object" && typeof (note as { text?: unknown }).text === "string") {
+    return (note as { text: string }).text;
+  }
+  return note == null ? "" : String(note);
 }
 
 export function formatDate(iso: string): string {

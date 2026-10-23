@@ -40,7 +40,7 @@ export default async function LedgerPage() {
               <p className="mt-1 font-display text-2xl font-semibold tabular">{formatFCFA(cashPosition.inBank)}</p>
             </div>
             <div>
-              <p className="text-xs tracking-wide text-[var(--azure-soft)] uppercase">Founder</p>
+              <p className="text-xs tracking-wide text-[var(--azure-soft)] uppercase">Office box</p>
               <p className="mt-1 font-display text-2xl font-semibold tabular">{formatFCFA(cashPosition.heldByFounder)}</p>
             </div>
             <div>
@@ -51,7 +51,7 @@ export default async function LedgerPage() {
         </div>
 
         <LedgerTable title="Bank account (exploitation)" movements={bankMovements} />
-        <LedgerTable title="Founder-held cash" movements={founderMovements} />
+        <LedgerTable title="Office box cash" movements={founderMovements} />
       </main>
     </div>
   );

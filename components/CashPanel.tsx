@@ -1,7 +1,7 @@
 import type { CashMovement, CashPosition } from "@/lib/types";
 import { WORKING_CAPITAL_DEPOSITED, formatDate, formatFCFA } from "@/lib/loans";
 
-const ACCOUNT_LABEL = { bank: "Bank", founder: "Founder" };
+const ACCOUNT_LABEL = { bank: "Bank", founder: "Office box" };
 
 type DisplayMovement =
   | { kind: "single"; key: string; description: string; account: CashMovement["account"]; amount: number; occurredOn: string }
@@ -66,9 +66,9 @@ export function CashPanel({ cash, deployedPrincipal }: { cash: CashPosition; dep
           <p className="mt-1 text-xs text-[var(--mist-soft)]">Liquid, available now</p>
         </div>
         <div className="rounded-xl bg-white/5 p-4">
-          <p className="text-xs tracking-wide text-[var(--mist)] uppercase">Held by founder</p>
+          <p className="text-xs tracking-wide text-[var(--mist)] uppercase">Office box</p>
           <p className="mt-1 text-xl font-semibold tabular">{formatFCFA(cash.heldByFounder)}</p>
-          <p className="mt-1 text-xs text-[var(--mist-soft)]">Not yet deposited to the bank</p>
+          <p className="mt-1 text-xs text-[var(--mist-soft)]">Cash on hand, not yet deposited to the bank</p>
         </div>
         <div className="rounded-xl bg-white/5 p-4">
           <p className="text-xs tracking-wide text-[var(--mist)] uppercase">Out with borrowers</p>

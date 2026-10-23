@@ -1,4 +1,5 @@
 import { pool } from "./db";
+import { noteText } from "./loans";
 import type {
   BorrowerProfile,
   CashAccount,
@@ -87,8 +88,8 @@ function rowToLoan(row: LoanRow): Loan {
     lastPaymentOn: row.last_payment_on ?? undefined,
     repaidOn: row.repaid_on ?? undefined,
     repaymentHistory: row.repayment_history.length > 0 ? row.repayment_history : undefined,
-    documents: row.documents.length > 0 ? row.documents : undefined,
-    notes: row.notes.length > 0 ? row.notes : undefined,
+    documents: Array.isArray(row.documents) && row.documents.length > 0 ? row.documents : undefined,
+    notes: Array.isArray(row.notes) && row.notes.length > 0 ? row.notes.map(noteText) : undefined,
     ...borrowerProfile(row),
   };
 }
@@ -266,7 +267,7 @@ interface CommissionRow {
   basis_profit: string;
   rate: string | null;
   amount: string;
-  status: "paid" | "payable";
+  status: "accruing" | "paid" | "payable";
   paid_on: string | null;
   notes: string[];
 }
@@ -281,7 +282,9 @@ interface CommissionRow {
  */
 export async function getCommissions(): Promise<Commission[]> {
   const { rows } = await pool.query<CommissionRow>(
-    `SELECT * FROM commissions ORDER BY status DESC, amount DESC, loan_id`
+    `SELECT * FROM commissions
+      ORDER BY CASE status WHEN 'payable' THEN 0 WHEN 'accruing' THEN 1 ELSE 2 END,
+               amount DESC, loan_id`
   );
   return rows.map((row) => ({
     id: row.id,
@@ -292,6 +295,6 @@ export async function getCommissions(): Promise<Commission[]> {
     amount: Number(row.amount),
     status: row.status,
     paidOn: row.paid_on ?? undefined,
-    notes: row.notes ?? [],
+    notes: Array.isArray(row.notes) ? row.notes.map(noteText) : [],
   }));
 }

@@ -13,7 +13,9 @@ deployment on purpose.
   unexplained contract article/document ("per Article 6...") and must never read like a
   changelog entry narrating how a figure was derived or instructing a future maintainer
   ("updated from X to Y because..."). A note is something a reader with no other context
-  can understand on its own — state the current fact, not its history.
+  can understand on its own — state the current fact, not its history. A note must be a plain
+  string, never an object like `{text: "..."}`: a non-string note crashes React's renderer and
+  takes the whole page down. `noteText()` in lib/loans.ts coerces defensively, but write strings.
 - **Newer, more authoritative documents win.** When a freshly supplied document (signed
   convention, reconnaissance de dette, a direct chat correction from the founder) conflicts
   with what's already on file, the newer/more authoritative source wins — but surface the
@@ -54,7 +56,7 @@ deployment on purpose.
 The founder tracks these separately, because the business model is to keep re-lending the
 same principal and earn the fee each time. Gross principal deployed flatters that badly.
 
-- **Lending working capital: 9,538,000 FCFA** (the figure to quote), as at 19 October 2026. The
+- **Lending working capital: 8,538,000 FCFA** (the figure to quote), as at 23 October 2026. The
   baseline was 6,150,000 as at 28 September 2026 (every principal disbursed to that date except
   Marie Andréa Koizan's renewable cycle 1, which re-lent the 300,000 she had just repaid); the
   founder's 17 October 2026 injection of 4,388,000 (sized to bring founder cash to 6,200,000)
@@ -62,7 +64,8 @@ same principal and earn the fee each time. Gross principal deployed flatters tha
   payroll and will not be lent out (Louis 150,000, founder 550,000, assistant 100,000, Emmanuel
   200,000), so lending working capital is 10,538,000 − 1,000,000 = 9,538,000.
   `WORKING_CAPITAL_DEPOSITED` in lib/loans.ts holds this figure (lending capital, net of payroll
-  drawn from the same pool).
+  drawn from the same pool). On 23 October 2026 JP Bénie withdrew 1,000,000 from the office box for
+  personal use; that money leaves the pool too, so 9,538,000 - 1,000,000 = 8,538,000.
 - **New money** is capital the founders had to find. **Recycled money** is a disbursement
   funded by principal a borrower had already handed back.
 - From 28 September 2026 onward, every new disbursement is classified as one or the other
@@ -89,6 +92,9 @@ Louis and Emmanuel take **20% of the profit** on every loan as the analyst fee. 
 the `commissions` table, one row per loan, with `basis_profit` recording the profit figure
 the rate was applied to so the arithmetic stays checkable if a loan is later restated.
 
+- `status = 'accruing'` means the loan is still open: the fee is building up on profit not yet
+  collected. It is not owed and not a cash movement. It becomes `payable` once the loan is fully
+  repaid.
 - `status = 'paid'` means the money has reached the analysts **and** there is a matching
   outflow in `cash_movements`. Do not mark a commission paid without that movement.
 - `status = 'payable'` means it is owed but still with JP, who was advanced the fees and
